@@ -1,0 +1,1 @@
+export { TedongMarketABI } from './TedongMarket';

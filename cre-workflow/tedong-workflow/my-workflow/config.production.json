@@ -1,0 +1,6 @@
+{
+  "geminiModel": "gemini-3-flash-preview",
+  "chainSelectorName": "ethereum-mainnet-worldchain-1",
+  "marketAddress": "0xA980A53007353EB3830e35570d3A3eF02e2fb725",
+  "gasLimit": "500000"
+}
