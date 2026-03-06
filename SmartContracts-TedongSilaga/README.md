@@ -186,7 +186,7 @@ ERC-20 faucet token for testnet. Decimals = 6 (same as real USDC).
 | Contract      | Address                                                                                                                          | Verified |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | MockUSDC      | [`0x6c4A665934214351e2886540a273Dc1A1dfAf775`](https://sepolia.worldscan.org/address/0x6c4A665934214351e2886540a273Dc1A1dfAf775) | Yes      |
-| MarketFactory | [`0xA980A53007353EB3830e35570d3A3eF02e2fb725`](https://sepolia.worldscan.org/address/0xA980A53007353EB3830e35570d3A3eF02e2fb725) | Yes      |
+| MarketFactory | [`0x49b4eec85810d31044dc7F06d1714Dcb93Cb96aA`](https://sepolia.worldscan.org/address/0x49b4eec85810d31044dc7F06d1714Dcb93Cb96aA) | Yes      |
 
 | Role                     | Address                                      |
 | ------------------------ | -------------------------------------------- |

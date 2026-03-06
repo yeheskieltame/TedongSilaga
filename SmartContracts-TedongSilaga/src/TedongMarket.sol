@@ -5,8 +5,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     SafeERC20
 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReceiverTemplate} from "./interfaces/ReceiverTemplate.sol";
 
-contract TedongMarket {
+contract TedongMarket is ReceiverTemplate {
     using SafeERC20 for IERC20;
 
     enum Status {
@@ -17,7 +18,7 @@ contract TedongMarket {
 
     struct Config {
         address admin;
-        address resolver;
+        address resolver; // CRE Forwarder address
         address platformWallet;
         address culturalFundWallet;
         address token;
@@ -31,7 +32,6 @@ contract TedongMarket {
     }
 
     error NotAdmin();
-    error NotResolver();
     error MarketNotOpen();
     error MarketNotLocked();
     error MarketNotResolved();
@@ -48,7 +48,6 @@ contract TedongMarket {
     event FeesDistributed(uint256 platformFee, uint256 culturalFee);
 
     address public admin;
-    address public resolver;
     address public platformWallet;
     address public culturalFundWallet;
     IERC20 public token;
@@ -69,9 +68,11 @@ contract TedongMarket {
     mapping(address => uint256) public stakesB;
     mapping(address => bool) public claimed;
 
-    constructor(Config memory _cfg, Info memory _info) {
+    constructor(
+        Config memory _cfg,
+        Info memory _info
+    ) ReceiverTemplate(_cfg.resolver) {
         admin = _cfg.admin;
-        resolver = _cfg.resolver;
         platformWallet = _cfg.platformWallet;
         culturalFundWallet = _cfg.culturalFundWallet;
         token = IERC20(_cfg.token);
@@ -107,8 +108,52 @@ contract TedongMarket {
         emit MarketLocked(address(this), dataSourceUrl);
     }
 
+    // ================================================================
+    // CRE Entry Point — called by Forwarder via onReport → _processReport
+    // ================================================================
+
+    /// @notice Process the CRE report data
+    /// @dev Report format: [0x01 prefix byte][abi.encode(uint8 result)]
+    function _processReport(bytes calldata report) internal override {
+        // Route based on prefix byte
+        if (report.length > 0 && report[0] == 0x01) {
+            _resolveMarket(report[1:]);
+        }
+    }
+
+    /// @dev Internal resolution logic, called from _processReport
+    function _resolveMarket(bytes calldata data) internal {
+        if (status != Status.Locked) revert MarketNotLocked();
+
+        uint8 result = abi.decode(data, (uint8));
+        if (result < 1 || result > 3) revert InvalidWinner();
+
+        winner = result;
+        status = Status.Resolved;
+
+        uint256 totalPool = totalPoolA + totalPoolB;
+        uint256 platformFee = totalPool / 100;
+        uint256 culturalFee = totalPool / 100;
+
+        if (platformFee > 0) token.safeTransfer(platformWallet, platformFee);
+        if (culturalFee > 0)
+            token.safeTransfer(culturalFundWallet, culturalFee);
+
+        winningPool = totalPool - platformFee - culturalFee;
+
+        emit FeesDistributed(platformFee, culturalFee);
+        emit MarketResolved(result);
+    }
+
+    // ================================================================
+    // Legacy direct resolver call (kept for manual/testing use)
+    // ================================================================
+
+    /// @notice Direct resolve (for manual testing, requires Forwarder as sender)
     function resolveMarket(uint8 result) external {
-        if (msg.sender != resolver) revert NotResolver();
+        // In production, CRE calls via onReport → _processReport
+        // This function allows direct calls from the Forwarder address
+        if (msg.sender != address(this)) revert NotAdmin();
         if (status != Status.Locked) revert MarketNotLocked();
         if (result < 1 || result > 3) revert InvalidWinner();
 

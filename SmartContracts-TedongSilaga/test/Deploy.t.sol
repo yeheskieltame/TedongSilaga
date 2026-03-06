@@ -104,7 +104,7 @@ contract DeployMarketTest is Test {
         console.log("");
 
         assertEq(factory.owner(), deployer);
-        assertEq(factory.resolver(), resolver);
+        assertEq(factory.resolver(), resolver); // This line remains unchanged as 'market' is not available here.
         assertEq(factory.token(), address(usdc));
         console.log("=== PASS ===");
     }
@@ -192,9 +192,13 @@ contract DeployMarketTest is Test {
 
         // Step 7: Resolve
 
-        console.log("[8] Chainlink CRE resolves: Salu (1) wins");
+        console.log("[8] Chainlink CRE resolves via onReport: Salu (1) wins");
+        bytes memory report = abi.encodePacked(
+            bytes1(0x01),
+            abi.encode(uint8(1))
+        );
         vm.prank(resolver);
-        market.resolveMarket(1);
+        market.onReport("", report);
         console.log("    winner     :", market.winner());
         console.log("    winningPool:", market.winningPool());
         console.log("    platformFee:", usdc.balanceOf(platformWallet));

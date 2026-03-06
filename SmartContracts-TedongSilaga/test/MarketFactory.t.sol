@@ -50,10 +50,10 @@ contract MarketFactoryTest is Test {
         TedongMarket market = TedongMarket(marketAddr);
         console.log("[2] Verify market configuration");
         console.log("    admin   :", market.admin());
-        console.log("    resolver:", market.resolver());
+        console.log("    resolver:", market.getForwarderAddress());
         console.log("    token   :", address(market.token()));
         assertEq(market.admin(), owner);
-        assertEq(market.resolver(), resolver);
+        assertEq(market.getForwarderAddress(), resolver);
         assertEq(address(market.token()), address(token));
         console.log("");
 
@@ -82,9 +82,13 @@ contract MarketFactoryTest is Test {
         vm.prank(owner);
         market.lockMarket();
 
-        console.log("[6] Resolver resolves: Salu wins (1)");
+        console.log("[6] Forwarder resolves via onReport: Salu wins (1)");
+        bytes memory report = abi.encodePacked(
+            bytes1(0x01),
+            abi.encode(uint8(1))
+        );
         vm.prank(resolver);
-        market.resolveMarket(1);
+        market.onReport("", report);
         console.log("    winner:", market.winner());
         console.log("    winningPool:", market.winningPool());
         console.log("    platformFee:", token.balanceOf(platformWallet));

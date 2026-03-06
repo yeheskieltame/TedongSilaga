@@ -10,7 +10,7 @@ contract TedongMarketTest is Test {
     MockERC20 public token;
 
     address admin = makeAddr("admin");
-    address resolver = makeAddr("resolver");
+    address resolver = makeAddr("resolver"); // CRE Forwarder
     address platformWallet = makeAddr("platform");
     address culturalFund = makeAddr("cultural");
     address budi = makeAddr("budi");
@@ -21,7 +21,7 @@ contract TedongMarketTest is Test {
     function _deployMarket() internal returns (TedongMarket) {
         TedongMarket.Config memory cfg = TedongMarket.Config({
             admin: admin,
-            resolver: resolver,
+            resolver: resolver, // resolver = Forwarder address
             platformWallet: platformWallet,
             culturalFundWallet: culturalFund,
             token: address(token)
@@ -35,6 +35,16 @@ contract TedongMarketTest is Test {
         });
 
         return new TedongMarket(cfg, info);
+    }
+
+    /// @dev Simulates CRE Forwarder calling onReport with the result
+    function _resolveViaForwarder(uint8 result) internal {
+        bytes memory report = abi.encodePacked(
+            bytes1(0x01),
+            abi.encode(result)
+        );
+        vm.prank(resolver);
+        market.onReport("", report);
     }
 
     function setUp() public {
@@ -74,9 +84,8 @@ contract TedongMarketTest is Test {
         console.log("    status: Locked");
         console.log("");
 
-        console.log("[4] Chainlink CRE resolves: Salu (1) wins");
-        vm.prank(resolver);
-        market.resolveMarket(1);
+        console.log("[4] CRE Forwarder resolves: Salu (1) wins via onReport");
+        _resolveViaForwarder(1);
         console.log("    winner:", market.winner());
         console.log("    winningPool:", market.winningPool());
         console.log("    platformFee:", token.balanceOf(platformWallet));
@@ -127,9 +136,8 @@ contract TedongMarketTest is Test {
         vm.prank(admin);
         market.lockMarket();
 
-        console.log("[4] CRE resolves: draw (3)");
-        vm.prank(resolver);
-        market.resolveMarket(3);
+        console.log("[4] CRE Forwarder resolves: draw (3) via onReport");
+        _resolveViaForwarder(3);
         console.log("    winningPool:", market.winningPool());
         console.log("");
 
@@ -193,24 +201,32 @@ contract TedongMarketTest is Test {
         console.log("    revert: NotAdmin");
     }
 
-    // forge test --match-test test_RevertResolveNotResolver -vvv
-    function test_RevertResolveNotResolver() public {
-        console.log("=== Revert: resolve by non-resolver ===");
+    // forge test --match-test test_RevertResolveNotForwarder -vvv
+    function test_RevertResolveNotForwarder() public {
+        console.log("=== Revert: resolve by non-forwarder ===");
         vm.prank(admin);
         market.lockMarket();
 
+        bytes memory report = abi.encodePacked(
+            bytes1(0x01),
+            abi.encode(uint8(1))
+        );
         vm.prank(budi);
-        vm.expectRevert(TedongMarket.NotResolver.selector);
-        market.resolveMarket(1);
-        console.log("    revert: NotResolver");
+        vm.expectRevert();
+        market.onReport("", report);
+        console.log("    revert: InvalidSender (correct)");
     }
 
     // forge test --match-test test_RevertResolveNotLocked -vvv
     function test_RevertResolveNotLocked() public {
         console.log("=== Revert: resolve when not locked ===");
+        bytes memory report = abi.encodePacked(
+            bytes1(0x01),
+            abi.encode(uint8(1))
+        );
         vm.prank(resolver);
         vm.expectRevert(TedongMarket.MarketNotLocked.selector);
-        market.resolveMarket(1);
+        market.onReport("", report);
         console.log("    revert: MarketNotLocked");
     }
 
@@ -223,8 +239,7 @@ contract TedongMarketTest is Test {
         vm.prank(admin);
         market.lockMarket();
 
-        vm.prank(resolver);
-        market.resolveMarket(1);
+        _resolveViaForwarder(1);
 
         vm.prank(budi);
         market.claimWinnings();
@@ -245,5 +260,18 @@ contract TedongMarketTest is Test {
         vm.expectRevert(TedongMarket.MarketNotResolved.selector);
         market.claimWinnings();
         console.log("    revert: MarketNotResolved");
+    }
+
+    // forge test --match-test test_SupportsInterface -vvv
+    function test_SupportsInterface() public view {
+        console.log("=== ERC-165: supportsInterface ===");
+        // IReceiver interface ID
+        bytes4 receiverInterfaceId = bytes4(keccak256("onReport(bytes,bytes)"));
+        assertTrue(market.supportsInterface(receiverInterfaceId));
+        // ERC165 interface ID
+        assertTrue(market.supportsInterface(0x01ffc9a7));
+        console.log("    supports IReceiver: true");
+        console.log("    supports ERC165: true");
+        console.log("=== PASS ===");
     }
 }

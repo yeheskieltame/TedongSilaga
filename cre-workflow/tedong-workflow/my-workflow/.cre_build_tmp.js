@@ -16802,7 +16802,17 @@ var buildGeminiRequest = (question, apiKey) => (sendRequester, config) => {
   const requestData = {
     system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
     contents: [{ parts: [{ text: question }] }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 10 }
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 1024,
+      thinkingConfig: { thinkingBudget: 0 }
+    },
+    safetySettings: [
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+    ]
   };
   const bodyBytes = new TextEncoder().encode(JSON.stringify(requestData));
   const body = Buffer.from(bodyBytes).toString("base64");
@@ -16820,7 +16830,15 @@ var buildGeminiRequest = (question, apiKey) => (sendRequester, config) => {
     throw new Error(`Gemini API error: ${resp.statusCode} - ${bodyText}`);
   }
   const parsed = JSON.parse(bodyText);
-  const answer = parsed?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "3";
+  const rawText = parsed?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+  const finishReason = parsed?.candidates?.[0]?.finishReason || "unknown";
+  const blockReason = parsed?.blockReason || "none";
+  console.log(`[Gemini RAW] status=${resp.statusCode} finish=${finishReason} block=${blockReason} text="${rawText}"`);
+  if (!rawText) {
+    console.log(`[Gemini RAW BODY] ${bodyText.substring(0, 500)}`);
+  }
+  const match = rawText.match(/[123]/);
+  const answer = match ? match[0] : "3";
   return { statusCode: resp.statusCode, answer };
 };
 var MARKET_LOCKED_SIGNATURE = "MarketLocked(address,string)";

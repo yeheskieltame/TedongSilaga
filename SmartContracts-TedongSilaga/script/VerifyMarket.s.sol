@@ -18,7 +18,7 @@ contract VerifyMarket is Script {
 
         TedongMarket.Config memory cfg = TedongMarket.Config({
             admin: market.admin(),
-            resolver: market.resolver(),
+            resolver: market.getForwarderAddress(),
             platformWallet: market.platformWallet(),
             culturalFundWallet: market.culturalFundWallet(),
             token: address(market.token())
@@ -36,7 +36,7 @@ contract VerifyMarket is Script {
         console.log("=== Verify TedongMarket ===");
         console.log("Market   :", marketAddr);
         console.log("Admin    :", cfg.admin);
-        console.log("Resolver :", cfg.resolver);
+        console.log("Forwarder:", cfg.resolver);
         console.log("Event    :", info.eventName);
         console.log("Buffalo A:", info.buffaloIdA);
         console.log("Buffalo B:", info.buffaloIdB);
