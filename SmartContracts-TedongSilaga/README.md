@@ -52,12 +52,19 @@ Solidity smart contracts for the Tedong Silaga decentralized prediction market. 
 | `faucetTo(address)`     | Public | Mint 1000 USDC to specified address   |
 | `faucetAmount(uint256)` | Public | Mint custom amount to caller          |
 
-## Deployed Addresses
+## Deployed Addresses (World Chain Sepolia)
 
-| Contract      | Network     | Address |
-| ------------- | ----------- | ------- |
-| MockUSDC      | World Chain | `TBD`   |
-| MarketFactory | World Chain | `TBD`   |
+| Contract      | Address                                                                                                                          | Verified |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| MockUSDC      | [`0x6c4A665934214351e2886540a273Dc1A1dfAf775`](https://sepolia.worldscan.org/address/0x6c4A665934214351e2886540a273Dc1A1dfAf775) | Yes      |
+| MarketFactory | [`0xA980A53007353EB3830e35570d3A3eF02e2fb725`](https://sepolia.worldscan.org/address/0xA980A53007353EB3830e35570d3A3eF02e2fb725) | Yes      |
+
+| Role                     | Address                                      |
+| ------------------------ | -------------------------------------------- |
+| Deployer / Owner         | `0x7C1f9BcdEA7C160E4763d6da06399A7D363A9e22` |
+| Resolver (CRE Forwarder) | `0x6E9EE680ef59ef64Aa8C7371279c27E496b5eDc1` |
+| Platform Wallet          | `0x7C1f9BcdEA7C160E4763d6da06399A7D363A9e22` |
+| Cultural Fund Wallet     | `0x7C1f9BcdEA7C160E4763d6da06399A7D363A9e22` |
 
 ## Development
 

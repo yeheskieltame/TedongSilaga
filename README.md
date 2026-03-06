@@ -110,6 +110,13 @@ TedongSilaga/
 └── PRD.md                          # Product Requirements Document
 ```
 
+## Deployed Contracts (World Chain Sepolia)
+
+| Contract      | Address                                                                                                                          | Verified |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| MockUSDC      | [`0x6c4A665934214351e2886540a273Dc1A1dfAf775`](https://sepolia.worldscan.org/address/0x6c4A665934214351e2886540a273Dc1A1dfAf775) | Yes      |
+| MarketFactory | [`0xA980A53007353EB3830e35570d3A3eF02e2fb725`](https://sepolia.worldscan.org/address/0xA980A53007353EB3830e35570d3A3eF02e2fb725) | Yes      |
+
 ## Smart Contracts
 
 Full smart contract documentation, function reference, and deployed addresses:
