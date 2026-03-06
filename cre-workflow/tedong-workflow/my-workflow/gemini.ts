@@ -78,7 +78,8 @@ const buildGeminiRequest =
     };
 
     const bodyBytes = new TextEncoder().encode(JSON.stringify(requestData));
-    const body = btoa(String.fromCharCode(...bodyBytes));
+    // Buffer is polyfilled by CRE WASM runtime
+    const body = (Buffer as any).from(bodyBytes).toString('base64');
 
     const resp = sendRequester
       .sendRequest({
