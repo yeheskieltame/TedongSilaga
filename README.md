@@ -17,7 +17,13 @@
 
 ## 🐃 What is Tedong Silaga?
 
-Deeply rooted in the highlands of **Tana Toraja, Indonesia**, _Ma'pasilaga Tedong_ (Tedong Silaga) is a centuries-old buffalo fighting tradition held during **Rambu Solo'** — grand, multi-day funeral festivals honoring the passing of nobility. These spectacular events showcase massive, highly revered water buffaloes — some worth tens of thousands of dollars, such as the sacred albino _Tedong Bonga_ — clashing in open arenas before thousands of passionate spectators. For generations, these prestigious matches have sparked intense, informal community betting. Yet this traditional system relies entirely on localized trust, verbal agreements, and word-of-mouth results shared through social media. **Tedong Silaga** bridges this ancient heritage with Web3 technology, transforming localized, opaque wagers into a globally accessible, mathematically fair, and transparent prediction market — while routing a portion of every pool directly back to preserving Torajan culture.
+Deep in the highlands of **Tana Toraja, Indonesia**, lives a centuries-old tradition called **_Ma'pasilaga Tedong_** (Tedong Silaga): ritual buffalo fighting held during **Rambu Solo'**, the grand multi-day funeral festivals honoring the passing of nobility.
+
+These spectacular events showcase massive, highly revered water buffaloes clashing in open arenas before thousands of passionate spectators. Some prized buffaloes, like the sacred albino _Tedong Bonga_, are worth tens of thousands of dollars. For generations, these prestigious matches have sparked **intense, informal community betting**.
+
+Yet the traditional betting system relies entirely on localized trust, verbal agreements, and word-of-mouth results shared through Facebook groups. There are no verifiable records, no transparency, and no protection against disputes.
+
+**Tedong Silaga** bridges this ancient heritage with Web3 technology. We transform localized, opaque wagers into a globally accessible, mathematically fair prediction market. A portion of every pool is automatically routed back to preserving Torajan culture.
 
 ### 📚 Learn More About the Culture
 
