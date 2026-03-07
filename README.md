@@ -15,6 +15,24 @@
 
 ---
 
+## 🐃 What is Tedong Silaga?
+
+Deeply rooted in the highlands of **Tana Toraja, Indonesia**, _Ma'pasilaga Tedong_ (Tedong Silaga) is a centuries-old buffalo fighting tradition held during **Rambu Solo'** — grand, multi-day funeral festivals honoring the passing of nobility. These spectacular events showcase massive, highly revered water buffaloes — some worth tens of thousands of dollars, such as the sacred albino _Tedong Bonga_ — clashing in open arenas before thousands of passionate spectators. For generations, these prestigious matches have sparked intense, informal community betting. Yet this traditional system relies entirely on localized trust, verbal agreements, and word-of-mouth results shared through social media. **Tedong Silaga** bridges this ancient heritage with Web3 technology, transforming localized, opaque wagers into a globally accessible, mathematically fair, and transparent prediction market — while routing a portion of every pool directly back to preserving Torajan culture.
+
+### 📚 Learn More About the Culture
+
+| Source                                                                                                                                                                                                    | Description                                                                 |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [Wikipedia — Ma'pasilaga Tedong](https://id.wikipedia.org/wiki/Ma%27pasilaga_tedong)                                                                                                                      | Comprehensive overview of the buffalo fighting tradition within Rambu Solo' |
+| [1001Indonesia — Mapasilaga Tedong](https://1001indonesia.net/mapasilaga-tedong-di-tana-toraja)                                                                                                           | In-depth article on the ritual, meaning, and cultural significance          |
+| [Authentic Indonesia — Tana Toraja Traditions](https://authentic-indonesia.com/blog/5-unique-culture-and-traditions-of-tana-toraja/)                                                                      | Tedong Silaga as ceremonial entertainment for the grieving family           |
+| [Detik.com — Tradisi Silaga Tedong](https://www.detik.com/sulsel/berita/d-6801472/mengenal-tradisi-silaga-tedong-pada-upacara-rambu-solo-suku-toraja)                                                     | Local news explaining the ancestral origins and cultural values             |
+| [YouTube — Live Tedong Silaga](https://www.youtube.com/results?search_query=tedong+silaga+toraja+rambu+solo)                                                                                              | Real-life match footage and Rambu Solo' procession videos                   |
+| [Academia.edu — Tedong Silaga](https://www.academia.edu/145803022/Tedong_Silaga)                                                                                                                          | Academic paper on cultural values, bravery, and community solidarity        |
+| [ResearchGate — Tedong as Symbol](https://www.researchgate.net/publication/380691799_Tedong_Buffalo_Symbol_of_Nobility_Humanity_and_Entertaiment_in_Funeral_Ceremony_in_The_Indigenous_Torajan_Indonesia) | Study on the buffalo as a symbol of status, humanity, and entertainment     |
+
+---
+
 ## Problem
 
 | Problem              | Description                                                                                                          |
