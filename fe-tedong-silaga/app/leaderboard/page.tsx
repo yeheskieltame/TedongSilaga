@@ -220,10 +220,6 @@ export default function LeaderboardPage() {
                   key={player.rank}
                   className="lb-row"
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.75rem",
-                    padding: "0.85rem 1.25rem",
                     borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
                     transition: "background 0.15s",
                     cursor: "pointer",
