@@ -1,34 +1,46 @@
+<div align="center">
+  <img src="./Logo_TedongSilaga.png" width="200" alt="Tedong Silaga Logo">
+
 # Tedong Silaga
 
-Decentralized prediction market for the traditional Torajan buffalo fighting ceremony (Tedong Silaga), built on World Chain with Chainlink CRE as the oracle and AI orchestration layer.
+**Decentralized prediction market for traditional Torajan buffalo fighting,**
+**powered by World Chain, Chainlink CRE, and Google Gemini AI.**
+
+[![World Chain](https://img.shields.io/badge/World_Chain-Sepolia-blue)](https://sepolia.worldscan.org)
+[![Chainlink CRE](https://img.shields.io/badge/Chainlink-CRE-375BD2)](https://docs.chain.link/cre)
+[![Gemini AI](https://img.shields.io/badge/Google-Gemini_AI-4285F4)](https://aistudio.google.com)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+
+</div>
+
+---
 
 ## Problem
 
-| Problem              | Description                                                                                                                         |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **No Transparency**  | Traditional betting is prone to manipulation and human error. There is no verifiable record of bets or outcomes.                    |
-| **Oracle Problem**   | Buffalo fight results are not available on any sports API. Results are scattered across local Facebook groups as unstructured text. |
-| **Sybil Attacks**    | Without identity verification, whales can manipulate pools using thousands of bot accounts.                                         |
-| **Cultural Erosion** | The Torajan buffalo fighting tradition lacks global visibility and sustainable funding for preservation.                            |
+| Problem              | Description                                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **No Transparency**  | Traditional betting is prone to manipulation. No verifiable record of bets or outcomes.                              |
+| **Oracle Problem**   | Buffalo fight results aren't on any sports API. Results are scattered as unstructured text on local Facebook groups. |
+| **Sybil Attacks**    | Without identity verification, bots can manipulate pools.                                                            |
+| **Cultural Erosion** | The Torajan buffalo fighting tradition lacks global visibility and sustainable funding.                              |
 
 ## Solution
 
-Tedong Silaga solves these problems by combining blockchain, AI, and decentralized identity:
+| Solution                  | How                                                                                                       |
+| ------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Trustless Settlement**  | Funds locked in smart contracts — only distributed based on verified on-chain data.                       |
+| **AI-Powered Oracle**     | CRE Workflow scrapes Facebook posts via Apify, sends to Gemini AI, and writes on-chain via CRE Forwarder. |
+| **Sybil Resistance**      | World ID ensures 1 human = 1 account. Gasless transactions via World Chain Paymaster.                     |
+| **Cultural Preservation** | 1% of every pool automatically sent to the Torajan cultural fund.                                         |
 
-| Solution                  | How                                                                                                                                                                     |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Trustless Settlement**  | Funds are locked in smart contracts and only distributed based on verified on-chain data. No intermediary can run away with the money.                                  |
-| **AI-Powered Oracle**     | Chainlink CRE Workflow scrapes Facebook group posts, sends them to an LLM (Google Gemini) for sentiment analysis, and calls `resolveMarket()` on-chain with the winner. |
-| **Sybil Resistance**      | World ID ensures 1 human = 1 account. Gasless transactions via World Chain Paymaster.                                                                                   |
-| **Cultural Preservation** | 1% of every winning pool is automatically sent to a multisig wallet managed by the Torajan cultural council.                                                            |
+## Key Features
 
-## Key Advantages
-
-- **Fully On-Chain** — All bets, results, and payouts are recorded on World Chain
-- **No Intermediary** — Smart contracts handle all fund management
-- **AI Oracle** — LLM extracts results from unstructured social media data
-- **Fair Fees** — Only 2% total (1% platform + 1% cultural fund)
-- **Gasless UX** — World ID + Paymaster for zero-gas transactions
+- 🐃 **Fully On-Chain** — All bets, results, and payouts recorded on World Chain
+- 🤖 **AI Oracle** — Gemini AI extracts results from real Facebook posts
+- 📱 **Facebook Integration** — Apify scrapes community pages for match results
+- ⛓️ **CRE Forwarder** — ERC-165 compliant on-chain settlement via `onReport()`
+- 💰 **Fair Fees** — Only 2% total (1% platform + 1% cultural fund)
+- 🌍 **Gasless UX** — World ID + Paymaster for zero-gas transactions
 
 ## System Architecture
 
@@ -41,31 +53,35 @@ graph TB
 
     subgraph World Chain
         MF["MarketFactory"]
-        TM["TedongMarket"]
+        TM["TedongMarket + ReceiverTemplate"]
+        FW["CRE Forwarder (ERC-165)"]
         PW["Platform Wallet (1%)"]
         CF["Cultural Fund (1%)"]
     end
 
-    subgraph Chainlink CRE
-        TR["Trigger: MarketLocked Event"]
-        API["Web2 API: Facebook Scraper"]
-        LLM["AI Agent: Google Gemini"]
-        TX["On-Chain TX: resolveMarket()"]
+    subgraph Chainlink CRE Workflow
+        TR["Log Trigger: MarketLocked"]
+        RD["EVM Read: buffalo names"]
+        AP["Apify: scrape Facebook Page"]
+        LLM["Gemini AI: determine winner"]
+        WR["EVM Write: onReport()"]
     end
 
     subgraph External
-        FB["Facebook Group"]
+        FB["Facebook Page: Tedong Silaga Result"]
     end
 
     U1 -->|"stake(1, amount)"| TM
     U2 -->|"stake(2, amount)"| TM
     MF -->|"createMarket()"| TM
     TM -->|"emit MarketLocked"| TR
-    TR --> API
-    API -->|"scrape posts"| FB
-    API -->|"raw text"| LLM
-    LLM -->|"winner: 1/2/3"| TX
-    TX -->|"resolveMarket(winner)"| TM
+    TR --> RD
+    RD --> AP
+    AP -->|"scrape posts"| FB
+    AP --> LLM
+    LLM -->|"winner: 1/2/3"| WR
+    WR -->|"report()"| FW
+    FW -->|"onReport()"| TM
     TM -->|"1% fee"| PW
     TM -->|"1% fee"| CF
     TM -->|"claimWinnings()"| U1
@@ -78,37 +94,46 @@ stateDiagram-v2
     [*] --> Open: createMarket()
     Open --> Open: stake()
     Open --> Locked: lockMarket()
-    Locked --> Resolved: resolveMarket()
+    Locked --> Resolved: CRE onReport()
     Resolved --> [*]: claimWinnings()
 ```
 
-| Phase        | Action                                                            | Actor         |
-| ------------ | ----------------------------------------------------------------- | ------------- |
-| **Open**     | Users stake tokens on Buffalo A or B                              | Users         |
-| **Locked**   | Market is locked when the match starts, no more stakes            | Admin         |
-| **Resolved** | CRE Workflow determines the winner via AI and calls resolveMarket | Chainlink CRE |
-| **Claimed**  | Winners withdraw their proportional share of the pool             | Users         |
+| Phase        | Action                                                      | Actor         |
+| ------------ | ----------------------------------------------------------- | ------------- |
+| **Open**     | Users stake tokens on Buffalo A or B                        | Users         |
+| **Locked**   | Market locked when match starts, emits `MarketLocked` event | Admin         |
+| **Resolved** | CRE Workflow scrapes Facebook → Gemini AI → `onReport()`    | Chainlink CRE |
+| **Claimed**  | Winners withdraw proportional share                         | Users         |
 
 ## Fee Distribution
 
-| Recipient                  | Percentage | Purpose                                                     |
-| -------------------------- | ---------- | ----------------------------------------------------------- |
-| Platform Wallet            | 1%         | Operational costs, Chainlink CRE execution fees             |
-| Cultural Preservation Fund | 1%         | Torajan cultural council multisig for heritage preservation |
-| Winners                    | 98%        | Distributed proportionally based on stake amount            |
+| Recipient                  | %   | Purpose                                            |
+| -------------------------- | --- | -------------------------------------------------- |
+| Platform Wallet            | 1%  | Operational costs, CRE execution fees              |
+| Cultural Preservation Fund | 1%  | Torajan cultural council for heritage preservation |
+| Winners                    | 98% | Distributed proportionally based on stake          |
 
 ## Project Structure
 
 ```
 TedongSilaga/
 ├── SmartContracts-TedongSilaga/   # Solidity contracts (Foundry)
-│   ├── src/                        # Core contracts
-│   ├── test/                       # Test suite
-│   └── script/                     # Deploy scripts
+│   ├── src/                        # TedongMarket, MarketFactory, ReceiverTemplate
+│   ├── test/                       # 18 tests across 4 suites
+│   └── script/                     # Deploy & verify scripts
+├── cre-workflow/                   # Chainlink CRE Workflow
+│   └── tedong-workflow/            # Apify + Gemini → on-chain settlement
 ├── frontend/                       # Next.js (coming soon)
-├── cre-workflow/                   # Chainlink CRE config (coming soon)
 └── PRD.md                          # Product Requirements Document
 ```
+
+## Documentation
+
+| Document                                                              | Description                                            |
+| --------------------------------------------------------------------- | ------------------------------------------------------ |
+| **[Smart Contracts README](./SmartContracts-TedongSilaga/README.md)** | Contract functions, errors, events, deployed addresses |
+| **[CRE Workflow README](./cre-workflow/tedong-workflow/README.md)**   | Workflow flow, Apify/Gemini config, simulation guide   |
+| **[PRD](./PRD.md)**                                                   | Product Requirements Document                          |
 
 ## Deployed Contracts (World Chain Sepolia)
 
@@ -117,21 +142,15 @@ TedongSilaga/
 | MockUSDC      | [`0x6c4A665934214351e2886540a273Dc1A1dfAf775`](https://sepolia.worldscan.org/address/0x6c4A665934214351e2886540a273Dc1A1dfAf775) | Yes      |
 | MarketFactory | [`0x49b4eec85810d31044dc7F06d1714Dcb93Cb96aA`](https://sepolia.worldscan.org/address/0x49b4eec85810d31044dc7F06d1714Dcb93Cb96aA) | Yes      |
 
-## Smart Contracts
-
-Full smart contract documentation, function reference, and deployed addresses:
-
-**[Smart Contracts README](./SmartContracts-TedongSilaga/README.md)**
-
 ## Tech Stack
 
-| Layer           | Technology                                 |
-| --------------- | ------------------------------------------ |
-| Blockchain      | World Chain (L2)                           |
-| Smart Contracts | Solidity 0.8.20, OpenZeppelin              |
-| Development     | Foundry (Forge, Cast, Anvil)               |
-| Oracle          | Chainlink CRE (Runtime Environment)        |
-| AI              | Google Gemini LLM                          |
-| Identity        | World ID (Sybil resistance)                |
-| Data Source     | Facebook Group API / Scraper               |
-| Token           | WLD / Mock USDC self deploy on World Chain |
+| Layer           | Technology                             |
+| --------------- | -------------------------------------- |
+| Blockchain      | World Chain (L2)                       |
+| Smart Contracts | Solidity 0.8.20, OpenZeppelin, ERC-165 |
+| Development     | Foundry (Forge, Cast, Anvil)           |
+| Oracle          | Chainlink CRE (Runtime Environment)    |
+| AI              | Google Gemini (gemini-3-flash-preview) |
+| Data Source     | Facebook Page via Apify API            |
+| Identity        | World ID (Sybil resistance)            |
+| Token           | WLD / Mock USDC on World Chain         |

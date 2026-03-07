@@ -4,109 +4,161 @@
     </a>
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/smartcontractkit/cre-templates/blob/main/LICENSE)
-[![CRE Home](https://img.shields.io/static/v1?label=CRE\&message=Home\&color=blue)](https://chain.link/chainlink-runtime-environment)
-[![CRE Documentation](https://img.shields.io/static/v1?label=CRE\&message=Docs\&color=blue)](https://docs.chain.link/cre)
+[![CRE Home](https://img.shields.io/static/v1?label=CRE&message=Home&color=blue)](https://chain.link/chainlink-runtime-environment)
+[![CRE Documentation](https://img.shields.io/static/v1?label=CRE&message=Docs&color=blue)](https://docs.chain.link/cre)
 
 </div>
 
-## Quick start
+# Tedong Silaga — CRE Workflow
 
-### 1) Add the ABI (TypeScript)
+Chainlink CRE workflow that automates on-chain settlement of the Tedong Silaga prediction market. Detects `MarketLocked` events on World Chain, scrapes real Facebook posts via Apify, determines the winner using Google Gemini AI, and writes the result on-chain through the CRE Forwarder.
 
-Place your ABI under `contracts/abi` as a `.ts` module and export it as `as const`. Then optionally re-export it from `contracts/abi/index.ts` for clean imports.
+## Key Features
 
-```ts
-// contracts/abi/PriceFeedAggregator.ts
-import type { Abi } from 'viem';
+| Feature                    | Description                                                                        |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| **EVM Log Trigger**        | Automatically listens for `MarketLocked(address, string)` event on World Chain     |
+| **EVM Read**               | Reads buffalo names and event data from the `TedongMarket` contract                |
+| **Facebook Scraping**      | Retrieves real community posts from a Facebook Page via [Apify](https://apify.com) |
+| **AI-Powered Judgment**    | Google Gemini analyzes post content to determine the winner (1, 2, or 3)           |
+| **EVM Write (CRE Report)** | Settles the market on-chain via `onReport()` + CRE Forwarder pattern (ERC-165)     |
 
-export const PriceFeedAggregator = [
-  // ... ABI array contents from the contract page ...
-] as const;
+## Workflow Flow
+
+```mermaid
+flowchart TD
+    A["Step 1: MarketLocked event detected (Log Trigger)"] --> B["Step 2: EVM Read buffalo names from contract"]
+    B --> C["Step 3: Scrape Facebook Page via Apify"]
+    C --> D["Step 4: Gemini AI analyzes post text"]
+    D --> E{"Winner?"}
+    E -->|1| F["Buffalo A wins"]
+    E -->|2| G["Buffalo B wins"]
+    E -->|3| H["Draw / Cancelled"]
+    F --> I["Step 5: runtime.report() → Forwarder → onReport()"]
+    G --> I
+    H --> I
+    I --> J["Market Resolved On-Chain ✅"]
 ```
 
-```ts
-// contracts/abi/index.ts
-export * from './PriceFeedAggregator';
-// add more as needed:
-// export * from './IERC20';
+## Project Structure
 
 ```
-
-> You can create additional ABI files the same way (e.g., `IERC20.ts`), exporting them as `as const`.
-
-### 2) Configure RPC in `project.yaml`
-
-Add an RPC for the chain you want to read from. For Arbitrum One mainnet:
-
-```yaml
-rpcs:
-  - chain-name: ethereum-mainnet-arbitrum-1
-    url: <YOUR_ARBITRUM_MAINNET_RPC_URL>
+tedong-workflow/
+├── my-workflow/
+│   ├── main.ts              # Workflow entry: trigger, EVM read/write, orchestration
+│   ├── facebook.ts          # Apify integration: scrape Facebook Page posts
+│   ├── gemini.ts            # Gemini AI integration: analyze post → determine winner
+│   ├── config.staging.json  # Staging config (World Chain Sepolia)
+│   ├── config.production.json
+│   └── workflow.yaml        # CRE workflow settings
+├── contracts/
+│   └── abi/
+│       ├── TedongMarket.ts  # Full ABI (onReport, stake, lockMarket, etc.)
+│       └── index.ts         # Re-export
+├── project.yaml             # CRE project config + RPC endpoints
+├── secrets.yaml             # Secret names (GEMINI_API_KEY, APIFY_TOKEN)
+└── .env                     # Secret values (DO NOT COMMIT)
 ```
 
-### 3) Configure the workflow
+## Configuration
 
-Create or update `config.json`:
+### config.staging.json
 
 ```json
 {
-  "schedule": "0 */10 * * * *",
-  "chainName": "ethereum-mainnet-arbitrum-1",
-  "feeds": [
-    {
-      "name": "BTC/USD",
-      "address": "0x6ce185860a4963106506C203335A2910413708e9"
-    },
-    {
-      "name": "ETH/USD",
-      "address": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612"
-    }
-  ]
+  "geminiModel": "gemini-3-flash-preview",
+  "chainSelectorName": "ethereum-testnet-sepolia-worldchain-1",
+  "marketAddress": "0x49b4eec85810d31044dc7F06d1714Dcb93Cb96aA",
+  "gasLimit": "500000",
+  "facebookPageId": "61586373132016",
+  "apifyActorId": "udA8UidvXIKpN2yNS"
 }
 ```
 
-* `schedule` uses a 6-field cron expression — this runs every 10 minutes at second 0.
-* `chainName` must match the RPC entry in `project.yaml`.
-* `feeds` is a list of (name, address) pairs to read.
+| Field               | Description                                       |
+| ------------------- | ------------------------------------------------- |
+| `geminiModel`       | Gemini model name (must support `thinkingConfig`) |
+| `chainSelectorName` | CRE chain identifier for World Chain              |
+| `marketAddress`     | MarketFactory contract address                    |
+| `gasLimit`          | Gas limit for on-chain write                      |
+| `facebookPageId`    | Facebook Page numeric ID to scrape                |
+| `apifyActorId`      | Apify actor ID for Facebook page scraper          |
 
-### 4) Ensure `workflow.yaml` points to your config
+### Secrets (.env)
 
-```yaml
-staging-settings:
-  user-workflow:
-    workflow-name: "my-workflow"
-  workflow-artifacts:
-    workflow-path: "."
-    config-path: "./config.json"
-    secrets-path: ""
+```env
+CRE_ETH_PRIVATE_KEY=0x...        # Resolver wallet private key
+GEMINI_API_KEY_VAR=AIza...        # Google Gemini API key
+APIFY_TOKEN_VAR=apify_api_...     # Apify API token
 ```
 
-### 5) Install dependencies
+## Quick Start
 
-From your project root:
+### 1. Install Dependencies
 
 ```bash
 bun install --cwd ./my-workflow
 ```
 
-### 6) Run a local simulation
+### 2. Configure Secrets
 
-From your project root:
+Copy and fill `.env`:
 
 ```bash
-cre workflow simulate my-workflow
+cp .env.example .env
+# Set CRE_ETH_PRIVATE_KEY, GEMINI_API_KEY_VAR, APIFY_TOKEN_VAR
 ```
 
-You should see output similar to:
+### 3. Post Result on Facebook
+
+Post on the configured Facebook Page with buffalo names as keywords:
 
 ```
-Workflow compiled
-2025-10-30T09:24:27Z [SIMULATION] Simulator Initialized
-
-2025-10-30T09:24:27Z [SIMULATION] Running trigger trigger=cron-trigger@1.0.0
-2025-10-30T09:24:28Z [USER LOG] msg="Data feed read" chain=ethereum-mainnet-arbitrum-1 feed=BTC/USD address=0x6ce185860a4963106506C203335A2910413708e9 decimals=8 latestAnswerRaw=10803231994131 latestAnswerScaled=108032.31994131
-2025-10-30T09:24:29Z [USER LOG] msg="Data feed read" chain=ethereum-mainnet-arbitrum-1 feed=ETH/USD address=0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612 decimals=8 latestAnswerRaw=378968000000 latestAnswerScaled=3789.68
-
-Workflow Simulation Result:
- "[{\"name\":\"BTC/USD\",\"address\":\"0x6ce185860a4963106506C203335A2910413708e9\",\"decimals\":8,\"latestAnswerRaw\":\"10803231994131\",\"scaled\":\"108032.31994131\"},{\"name\":\"ETH/USD\",\"address\":\"0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612\",\"decimals\":8,\"latestAnswerRaw\":\"378968000000\",\"scaled\":\"3789.68\"}]"
+📢 Hasil Tedong Silaga: championfallo vs bentok
+Pertandingan hari ini di acara silagaArena.
+Pemenang: championfallo menang telak setelah 15 menit!
+#TedongSilaga #AduKerbau
 ```
+
+### 4. Lock the Market On-Chain
+
+```bash
+# Via Foundry (or via frontend)
+cast send $MARKET_ADDRESS "lockMarket()" --rpc-url $RPC_URL --private-key $PRIVATE_KEY
+```
+
+### 5. Simulate
+
+```bash
+cre workflow simulate my-workflow --broadcast
+```
+
+Expected output:
+
+```
+[Step 1] MarketLocked event detected
+[Step 2] Buffalo A: championfallo, Buffalo B: bentok
+[Step 3] Found 3 Facebook posts
+[Step 4] AI Result: 1 (championfallo)
+[Step 5] Settlement successful: 0x...
+=== Resolution Complete ===
+```
+
+### 6. Deploy to CRE DON
+
+```bash
+cre workflow deploy my-workflow
+```
+
+## External Services
+
+| Service                                      | Purpose                | Free Tier           |
+| -------------------------------------------- | ---------------------- | ------------------- |
+| [Apify](https://apify.com)                   | Facebook Page scraper  | $5/month credit     |
+| [Google Gemini](https://aistudio.google.com) | AI buffalo fight judge | Free tier available |
+| [Alchemy](https://alchemy.com)               | World Chain RPC        | Free tier available |
+
+## Related
+
+- **[Smart Contracts README](../../SmartContracts-TedongSilaga/README.md)** — Full contract documentation
+- **[Product Requirements Document](../../PRD.md)** — PRD

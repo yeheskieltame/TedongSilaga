@@ -16,26 +16,26 @@ Solidity smart contracts for the Tedong Silaga decentralized prediction market. 
 
 ## Architecture
 
-```
-┌──────────────┐    ┌─────────────────┐    ┌──────────────────┐
-│ MarketFactory │───▶│  TedongMarket   │◀───│  CRE Forwarder   │
-│              │    │                 │    │  (Chainlink DON) │
-│ createMarket()   │ ReceiverTemplate │    │                  │
-│              │    │ ├─ onReport()   │    │ writeReport()    │
-│              │    │ ├─ _processReport│    │                  │
-│              │    │ └─ ERC-165      │    │                  │
-└──────────────┘    └─────────────────┘    └──────────────────┘
+```mermaid
+graph LR
+    MF["MarketFactory"] -->|"createMarket()"| TM["TedongMarket\n(ReceiverTemplate)"]
+    FW["CRE Forwarder\n(Chainlink DON)"] -->|"onReport()"| TM
+    TM -->|"supportsInterface()"| FW
+    TM -->|"ERC-165"| INT["IReceiver + IERC165"]
 ```
 
 ### CRE Resolution Flow
 
-```
-CRE Workflow → runtime.report() → Forwarder.report()
-  → TedongMarket.onReport(metadata, report)     ← ReceiverTemplate validates sender
-    → _processReport(report)
-      → if report[0] == 0x01:
-          _resolveMarket(report[1:])             ← decodes uint8 result
-            → distributes fees → sets winner
+```mermaid
+flowchart TD
+    A["CRE Workflow: runtime.report()"] --> B["Forwarder.report()"]
+    B --> C["TedongMarket.onReport(metadata, report)"]
+    C --> D{"ReceiverTemplate:\nmsg.sender == Forwarder?"}
+    D -->|Yes| E["_processReport(report)"]
+    D -->|No| F["revert InvalidSender"]
+    E --> G{"report[0] == 0x01?"}
+    G -->|Yes| H["_resolveMarket(report[1:])"]
+    H --> I["decode uint8 result\ndistribute fees\nset winner"]
 ```
 
 ---
