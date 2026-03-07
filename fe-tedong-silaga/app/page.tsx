@@ -5,7 +5,7 @@ import ParticleSphere from "@/components/ParticleSphere";
 import HeroSection from "@/components/HeroSection";
 import ExplanationCards from "@/components/ExplanationCards";
 import MatchCarousel from "@/components/MatchCarousel";
-import Header from "@/components/Header";
+import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useScroll } from "framer-motion";
 
@@ -28,8 +28,8 @@ export default function Home() {
       {/* ── 3D Scene (Fixed Background) ── */}
       <ParticleSphere scrollYProgress={scrollYProgress} />
 
-      {/* ── Fixed Header ── */}
-      <Header />
+      {/* ── Fixed Navigation ── */}
+      <Navbar />
 
       {/* ── Cinematic Scroll Track: 650vh ── */}
       <div ref={containerRef} style={{ height: "650vh", position: "relative" }}>

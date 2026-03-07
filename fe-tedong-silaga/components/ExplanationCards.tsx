@@ -10,23 +10,17 @@ const Card = ({ title, body, delay }: { title: string; body: string; delay: numb
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}
+      className="explanation-card"
       style={{
         background: "rgba(255,255,255,0.025)",
         border: "1px solid rgba(255,255,255,0.08)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        borderRadius: "32px",
-        padding: "2.5rem 3rem",
-        maxWidth: "720px",
         width: "100%",
-        marginBottom: "1.5rem",
         flexShrink: 0,
       }}
     >
-      <h3 style={{
-        fontSize: "1.6rem", fontWeight: 800, color: "#F8FAFC",
-        marginBottom: "1rem", letterSpacing: "-0.03em"
-      }}>
+      <h3 className="explanation-card-title">
         {title}
       </h3>
       <p style={{
