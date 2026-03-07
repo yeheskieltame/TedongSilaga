@@ -2,5 +2,7 @@
   "geminiModel": "gemini-3-flash-preview",
   "chainSelectorName": "ethereum-testnet-sepolia-worldchain-1",
   "marketAddress": "0x49b4eec85810d31044dc7F06d1714Dcb93Cb96aA",
-  "gasLimit": "500000"
+  "gasLimit": "500000",
+  "facebookPageId": "61586373132016",
+  "apifyActorId": "udA8UidvXIKpN2yNS"
 }

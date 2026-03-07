@@ -11,6 +11,8 @@ type Config = {
   chainSelectorName: string;
   marketAddress: string;
   gasLimit: string;
+  facebookPageId: string;
+  apifyActorId: string;
 };
 
 interface GeminiApiResponse {
@@ -28,35 +30,49 @@ interface GeminiResponse {
   answer: string;
 }
 
-const SYSTEM_PROMPT = `You are a judge for a traditional Torajan buffalo fighting event (Tedong Silaga).
-You will receive text from a community report about a buffalo fight.
-Determine who won based on the text.
+const SYSTEM_PROMPT = `You are a judge for a traditional Torajan buffalo fighting event called "Tedong Silaga" or "Adu Kerbau".
+
+You will receive the names of two buffaloes and text scraped from Facebook community posts about the match result.
+
+Based on the Facebook post content, determine who won the buffalo fight.
 
 OUTPUT FORMAT (CRITICAL):
 Reply with ONLY a single digit, nothing else:
-1 - if the first buffalo won
-2 - if the second buffalo won
-3 - if draw, cancelled, or unclear
+1 - if the first buffalo (Buffalo A) won
+2 - if the second buffalo (Buffalo B) won
+3 - if draw, cancelled, unclear, or no reliable information found
 
-Your ENTIRE response must be ONLY the number. No explanation, no whitespace, no punctuation.`;
+Your ENTIRE response must be ONLY the number 1, 2, or 3. No explanation, no whitespace, no punctuation.`;
 
+/**
+ * Ask Gemini AI to determine the winner from scraped Facebook posts.
+ *
+ * @param runtime - CRE runtime
+ * @param buffaloA - First buffalo name
+ * @param buffaloB - Second buffalo name
+ * @param facebookText - Scraped text from Facebook (via Apify)
+ */
 export function askGemini(
   runtime: Runtime<Config>,
   buffaloA: string,
   buffaloB: string,
   facebookText: string,
 ): GeminiResponse {
-  runtime.log('[Gemini] Querying AI for match result...');
+  runtime.log('[Gemini] Analyzing Facebook post for match result...');
 
   const geminiApiKey = runtime.getSecret({ id: 'GEMINI_API_KEY' }).result();
   const httpClient = new cre.capabilities.HTTPClient();
 
-  const userPrompt = `Buffalo fight between "${buffaloA}" and "${buffaloB}".
+  const userPrompt = `Buffalo fight match:
+Buffalo A (first buffalo): "${buffaloA}"
+Buffalo B (second buffalo): "${buffaloB}"
 
-Community report:
+Facebook community posts about this match:
+---
 ${facebookText}
+---
 
-Who won? Reply with ONLY the number (1, 2, or 3).`;
+Based on the Facebook posts above, who won? Reply with ONLY 1, 2, or 3.`;
 
   const result = httpClient
     .sendRequest(
@@ -79,7 +95,6 @@ const buildGeminiRequest =
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 1024,
-        // gemini-3-flash-preview is a thinking model; set low thinking budget
         thinkingConfig: { thinkingBudget: 0 },
       },
       safetySettings: [
@@ -91,7 +106,6 @@ const buildGeminiRequest =
     };
 
     const bodyBytes = new TextEncoder().encode(JSON.stringify(requestData));
-    // Buffer is polyfilled by CRE WASM runtime
     const body = (Buffer as any).from(bodyBytes).toString('base64');
 
     const resp = sendRequester
@@ -117,7 +131,6 @@ const buildGeminiRequest =
     const finishReason = parsed?.candidates?.[0]?.finishReason || 'unknown';
     const blockReason = parsed?.blockReason || 'none';
 
-    // Log full response for debugging
     // eslint-disable-next-line no-console
     console.log(`[Gemini RAW] status=${resp.statusCode} finish=${finishReason} block=${blockReason} text="${rawText}"`);
 
@@ -125,7 +138,6 @@ const buildGeminiRequest =
       console.log(`[Gemini RAW BODY] ${bodyText.substring(0, 500)}`);
     }
 
-    // Extract digit 1, 2, or 3 from response
     const match = rawText.match(/[123]/);
     const answer = match ? match[0] : '3';
 

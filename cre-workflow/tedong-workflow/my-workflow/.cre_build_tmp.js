@@ -17052,27 +17052,92 @@ var TedongMarketABI = [
     type: "function"
   }
 ];
-var SYSTEM_PROMPT = `You are a judge for a traditional Torajan buffalo fighting event (Tedong Silaga).
-You will receive text from a community report about a buffalo fight.
-Determine who won based on the text.
+function scrapeFacebookPage(runtime2, buffaloA, buffaloB) {
+  runtime2.log(`[Facebook] Scraping page ${runtime2.config.facebookPageId} via Apify...`);
+  runtime2.log(`[Facebook] Looking for: "${buffaloA}" and "${buffaloB}"`);
+  const apifyToken = runtime2.getSecret({ id: "APIFY_TOKEN" }).result();
+  const httpClient = new cre.capabilities.HTTPClient;
+  const result = httpClient.sendRequest(runtime2, buildApifyRequest(apifyToken.value, buffaloA, buffaloB), consensusIdenticalAggregation())(runtime2.config).result();
+  runtime2.log(`[Facebook] Found ${result.postCount} posts`);
+  if (result.matchedText) {
+    const preview = result.matchedText.length > 150 ? result.matchedText.substring(0, 150) + "..." : result.matchedText;
+    runtime2.log(`[Facebook] Post: ${preview}`);
+  }
+  return result;
+}
+var buildApifyRequest = (apifyToken, buffaloA, buffaloB) => (sendRequester, config) => {
+  const actorInput = {
+    page_id: config.facebookPageId,
+    maxResults: 3
+  };
+  const bodyBytes = new TextEncoder().encode(JSON.stringify(actorInput));
+  const body = Buffer.from(bodyBytes).toString("base64");
+  const actorId = config.apifyActorId;
+  const resp = sendRequester.sendRequest({
+    url: `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${apifyToken}`,
+    method: "POST",
+    body,
+    headers: {
+      "Content-Type": "application/json"
+    }
+  }).result();
+  const bodyText = new TextDecoder().decode(resp.body);
+  console.log(`[Apify RAW] status=${resp.statusCode} body=${bodyText.substring(0, 500)}`);
+  if (!ok(resp)) {
+    throw new Error(`Apify API error: ${resp.statusCode} - ${bodyText.substring(0, 200)}`);
+  }
+  let posts = [];
+  try {
+    const parsed = JSON.parse(bodyText);
+    posts = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    console.log(`[Apify] Failed to parse response: ${bodyText.substring(0, 200)}`);
+  }
+  const allMessages = posts.map((p) => p.message || p.message_rich || "").filter((t) => t.length > 0);
+  const lowerA = buffaloA.toLowerCase();
+  const lowerB = buffaloB.toLowerCase();
+  const relevant = allMessages.filter((msg) => {
+    const lower = msg.toLowerCase();
+    return lower.includes(lowerA) && lower.includes(lowerB);
+  });
+  const matchedText = relevant.length > 0 ? relevant.join(`
+
+---
+
+`) : allMessages.join(`
+
+---
+
+`);
+  return { statusCode: resp.statusCode, postCount: posts.length, matchedText };
+};
+var SYSTEM_PROMPT = `You are a judge for a traditional Torajan buffalo fighting event called "Tedong Silaga" or "Adu Kerbau".
+
+You will receive the names of two buffaloes and text scraped from Facebook community posts about the match result.
+
+Based on the Facebook post content, determine who won the buffalo fight.
 
 OUTPUT FORMAT (CRITICAL):
 Reply with ONLY a single digit, nothing else:
-1 - if the first buffalo won
-2 - if the second buffalo won
-3 - if draw, cancelled, or unclear
+1 - if the first buffalo (Buffalo A) won
+2 - if the second buffalo (Buffalo B) won
+3 - if draw, cancelled, unclear, or no reliable information found
 
-Your ENTIRE response must be ONLY the number. No explanation, no whitespace, no punctuation.`;
+Your ENTIRE response must be ONLY the number 1, 2, or 3. No explanation, no whitespace, no punctuation.`;
 function askGemini(runtime2, buffaloA, buffaloB, facebookText) {
-  runtime2.log("[Gemini] Querying AI for match result...");
+  runtime2.log("[Gemini] Analyzing Facebook post for match result...");
   const geminiApiKey = runtime2.getSecret({ id: "GEMINI_API_KEY" }).result();
   const httpClient = new cre.capabilities.HTTPClient;
-  const userPrompt = `Buffalo fight between "${buffaloA}" and "${buffaloB}".
+  const userPrompt = `Buffalo fight match:
+Buffalo A (first buffalo): "${buffaloA}"
+Buffalo B (second buffalo): "${buffaloB}"
 
-Community report:
+Facebook community posts about this match:
+---
 ${facebookText}
+---
 
-Who won? Reply with ONLY the number (1, 2, or 3).`;
+Based on the Facebook posts above, who won? Reply with ONLY 1, 2, or 3.`;
   const result = httpClient.sendRequest(runtime2, buildGeminiRequest(userPrompt, geminiApiKey.value), consensusIdenticalAggregation())(runtime2.config).result();
   runtime2.log(`[Gemini] Answer: ${result.answer}`);
   return result;
@@ -17174,14 +17239,22 @@ function onLogTrigger(runtime2, log) {
     runtime2.log(`[Step 2] Event: ${eventName}`);
     runtime2.log(`[Step 2] Buffalo A: ${buffaloA}`);
     runtime2.log(`[Step 2] Buffalo B: ${buffaloB}`);
-    runtime2.log("[Step 3] Querying Gemini AI...");
-    const facebookText = `Acara ${eventName} hari ini sangat meriah! Pertandingan adu kerbau antara ${buffaloA} dan ${buffaloB} baru saja selesai. ${buffaloA} menang telak setelah pertarungan sengit selama 15 menit. Semua penonton bersorak gembira.`;
+    runtime2.log("[Step 3] Searching Facebook via Apify...");
+    const fbResult = scrapeFacebookPage(runtime2, buffaloA, buffaloB);
+    let facebookText = fbResult.matchedText;
+    if (!facebookText) {
+      runtime2.log("[Step 3] No Facebook posts found, will default to draw");
+      facebookText = "No community posts found about this match.";
+    } else {
+      runtime2.log(`[Step 3] Found ${fbResult.postCount} Facebook posts`);
+    }
+    runtime2.log("[Step 4] Analyzing with Gemini AI...");
     const geminiResult = askGemini(runtime2, buffaloA, buffaloB, facebookText);
     const winner = parseInt(geminiResult.answer, 10);
     const validWinner = winner >= 1 && winner <= 3 ? winner : 3;
     const resultMap = { 1: buffaloA, 2: buffaloB, 3: "Draw/Cancelled" };
-    runtime2.log(`[Step 3] AI Result: ${validWinner} (${resultMap[validWinner]})`);
-    runtime2.log("[Step 4] Writing settlement on-chain...");
+    runtime2.log(`[Step 4] AI Result: ${validWinner} (${resultMap[validWinner]})`);
+    runtime2.log("[Step 5] Writing settlement on-chain...");
     const settlementData = encodeAbiParameters(RESOLVE_PARAMS, [validWinner]);
     const reportData = "0x01" + settlementData.slice(2);
     const reportResponse = runtime2.report({
@@ -17197,7 +17270,7 @@ function onLogTrigger(runtime2, log) {
     }).result();
     if (writeResult.txStatus === TxStatus.SUCCESS) {
       const txHash = bytesToHex(writeResult.txHash || new Uint8Array(32));
-      runtime2.log(`[Step 4] Settlement successful: ${txHash}`);
+      runtime2.log(`[Step 5] Settlement successful: ${txHash}`);
       runtime2.log("=== Resolution Complete ===");
       return JSON.stringify({
         market: marketAddress,

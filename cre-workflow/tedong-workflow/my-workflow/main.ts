@@ -20,6 +20,7 @@ import {
   zeroAddress,
 } from 'viem';
 import { TedongMarketABI } from '../contracts/abi';
+import { scrapeFacebookPage } from './facebook';
 import { askGemini } from './gemini';
 
 // ---------- Config ----------
@@ -29,6 +30,8 @@ type Config = {
   chainSelectorName: string;
   marketAddress: string;
   gasLimit: string;
+  facebookPageId: string;
+  apifyActorId: string;
 };
 
 // ---------- Constants ----------
@@ -115,22 +118,31 @@ function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
     runtime.log(`[Step 2] Buffalo A: ${buffaloA}`);
     runtime.log(`[Step 2] Buffalo B: ${buffaloB}`);
 
-    // Step 3: Scrape Facebook + Query Gemini AI
-    runtime.log('[Step 3] Querying Gemini AI...');
+    // Step 3: Scrape Facebook via Apify
+    runtime.log('[Step 3] Searching Facebook via Apify...');
 
-    // For hackathon: simulated Facebook data
-    // In production: use HTTPClient to scrape real data from dataSourceUrl
-    const facebookText = `Acara ${eventName} hari ini sangat meriah! Pertandingan adu kerbau antara ${buffaloA} dan ${buffaloB} baru saja selesai. ${buffaloA} menang telak setelah pertarungan sengit selama 15 menit. Semua penonton bersorak gembira.`;
+    const fbResult = scrapeFacebookPage(runtime, buffaloA, buffaloB);
+
+    let facebookText = fbResult.matchedText;
+    if (!facebookText) {
+      runtime.log('[Step 3] No Facebook posts found, will default to draw');
+      facebookText = 'No community posts found about this match.';
+    } else {
+      runtime.log(`[Step 3] Found ${fbResult.postCount} Facebook posts`);
+    }
+
+    // Step 4: Ask Gemini to analyze the scraped Facebook content
+    runtime.log('[Step 4] Analyzing with Gemini AI...');
 
     const geminiResult = askGemini(runtime, buffaloA, buffaloB, facebookText);
     const winner = parseInt(geminiResult.answer, 10);
     const validWinner = winner >= 1 && winner <= 3 ? winner : 3;
 
     const resultMap: Record<number, string> = { 1: buffaloA, 2: buffaloB, 3: 'Draw/Cancelled' };
-    runtime.log(`[Step 3] AI Result: ${validWinner} (${resultMap[validWinner]})`);
+    runtime.log(`[Step 4] AI Result: ${validWinner} (${resultMap[validWinner]})`);
 
-    // Step 4: Write result on-chain (EVM Write via Report)
-    runtime.log('[Step 4] Writing settlement on-chain...');
+    // Step 5: Write result on-chain (EVM Write via Report)
+    runtime.log('[Step 5] Writing settlement on-chain...');
 
     const settlementData = encodeAbiParameters(RESOLVE_PARAMS, [validWinner]);
 
@@ -156,7 +168,7 @@ function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
 
     if (writeResult.txStatus === TxStatus.SUCCESS) {
       const txHash = bytesToHex(writeResult.txHash || new Uint8Array(32));
-      runtime.log(`[Step 4] Settlement successful: ${txHash}`);
+      runtime.log(`[Step 5] Settlement successful: ${txHash}`);
       runtime.log('=== Resolution Complete ===');
       return JSON.stringify({
         market: marketAddress,
