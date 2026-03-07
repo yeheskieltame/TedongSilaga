@@ -1,18 +1,91 @@
 # Smart Contracts — Tedong Silaga
 
-Solidity smart contracts for the Tedong Silaga decentralized prediction market. Built with Foundry and OpenZeppelin.
+Solidity smart contracts for the Tedong Silaga decentralized prediction market. Built with Foundry, OpenZeppelin, and Chainlink CRE.
 
 ## Contracts
 
-| Contract            | Description                                                          |
-| ------------------- | -------------------------------------------------------------------- |
-| `MarketFactory.sol` | Factory that deploys a new `TedongMarket` for each match             |
-| `TedongMarket.sol`  | Per-match contract handling stakes, locking, resolution, and payouts |
-| `MockUSDC.sol`      | Faucet-enabled mock USDC token for testnet deployment                |
+| Contract               | Description                                                            |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `MarketFactory.sol`    | Factory that deploys a new `TedongMarket` for each match               |
+| `TedongMarket.sol`     | Per-match contract: staking, locking, CRE resolution, fee distribution |
+| `ReceiverTemplate.sol` | Base contract for receiving Chainlink CRE Forwarder reports (ERC-165)  |
+| `IReceiver.sol`        | Interface for CRE Forwarder receiver — `onReport(metadata, report)`    |
+| `MockUSDC.sol`         | Faucet-enabled mock USDC (6 decimals) for testnet                      |
+
+---
+
+## Architecture
+
+```
+┌──────────────┐    ┌─────────────────┐    ┌──────────────────┐
+│ MarketFactory │───▶│  TedongMarket   │◀───│  CRE Forwarder   │
+│              │    │                 │    │  (Chainlink DON) │
+│ createMarket()   │ ReceiverTemplate │    │                  │
+│              │    │ ├─ onReport()   │    │ writeReport()    │
+│              │    │ ├─ _processReport│    │                  │
+│              │    │ └─ ERC-165      │    │                  │
+└──────────────┘    └─────────────────┘    └──────────────────┘
+```
+
+### CRE Resolution Flow
+
+```
+CRE Workflow → runtime.report() → Forwarder.report()
+  → TedongMarket.onReport(metadata, report)     ← ReceiverTemplate validates sender
+    → _processReport(report)
+      → if report[0] == 0x01:
+          _resolveMarket(report[1:])             ← decodes uint8 result
+            → distributes fees → sets winner
+```
 
 ---
 
 ## Contract Details
+
+### interfaces/IReceiver.sol
+
+Chainlink CRE Forwarder receiver interface. Extends ERC-165.
+
+```solidity
+interface IReceiver is IERC165 {
+    function onReport(bytes calldata metadata, bytes calldata report) external;
+}
+```
+
+| Item                  | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `onReport()`          | Entry point called by the CRE Forwarder with signed report |
+| `supportsInterface()` | ERC-165 — returns `true` for `IReceiver` and `IERC165` IDs |
+
+---
+
+### interfaces/ReceiverTemplate.sol
+
+Abstract base contract that implements `IReceiver`. Validates that only the trusted Chainlink Forwarder can call `onReport`.
+
+#### Constructor
+
+| Parameter           | Type      | Description                                                                 |
+| ------------------- | --------- | --------------------------------------------------------------------------- |
+| `_forwarderAddress` | `address` | Chainlink KeystoneForwarder contract (World Chain Sepolia: `0x6E9EE680...`) |
+
+#### Functions
+
+| Function                     | Access         | Description                                           |
+| ---------------------------- | -------------- | ----------------------------------------------------- |
+| `onReport(metadata, report)` | Forwarder only | Validates sender, then calls `_processReport(report)` |
+| `getForwarderAddress()`      | Public (view)  | Returns the stored Forwarder address                  |
+| `_processReport(report)`     | Internal       | Abstract — implemented by TedongMarket                |
+| `supportsInterface(id)`      | Public (pure)  | ERC-165: returns `true` for IReceiver + IERC165       |
+
+#### Errors
+
+| Error                             | Trigger                                      |
+| --------------------------------- | -------------------------------------------- |
+| `InvalidForwarderAddress()`       | Constructor called with `address(0)`         |
+| `InvalidSender(sender, expected)` | `onReport()` called by non-Forwarder address |
+
+---
 
 ### MarketFactory.sol
 
@@ -23,7 +96,7 @@ Factory contract responsible for deploying a new `TedongMarket` for each buffalo
 | Variable             | Type        | Description                                        |
 | -------------------- | ----------- | -------------------------------------------------- |
 | `owner`              | `address`   | Factory owner, the only one who can create markets |
-| `resolver`           | `address`   | CRE Forwarder address that resolves markets        |
+| `resolver`           | `address`   | CRE Forwarder address passed to each market        |
 | `platformWallet`     | `address`   | Wallet receiving the platform fee (1%)             |
 | `culturalFundWallet` | `address`   | Wallet receiving the cultural fund fee (1%)        |
 | `token`              | `address`   | ERC-20 token address (MockUSDC)                    |
@@ -35,7 +108,7 @@ Factory contract responsible for deploying a new `TedongMarket` for each buffalo
 
 - Initializes the factory with the given configuration
 - `owner` is automatically set to `msg.sender` (deployer)
-- All parameters are stored and reused for every new market
+- `_resolver` is the CRE Forwarder address — passed to each TedongMarket as the trusted Forwarder
 
 **`createMarket(eventName, buffaloIdA, buffaloIdB, dataSourceUrl)` → `address`**
 
@@ -64,28 +137,34 @@ Factory contract responsible for deploying a new `TedongMarket` for each buffalo
 
 ### TedongMarket.sol
 
-Per-match contract that handles staking, locking, resolution, and payout distribution.
+Per-match contract that handles staking, locking, AI-powered resolution via Chainlink CRE, and payout distribution. Inherits from `ReceiverTemplate` to accept signed reports from the CRE Forwarder.
 
-#### Market Lifecycle (Status)
+#### Inheritance
+
+```
+ReceiverTemplate (← IReceiver ← IERC165)
+  └── TedongMarket
+```
+
+#### Market Lifecycle
 
 ```
 Open → Locked → Resolved
 ```
 
-| Status     | Value | Description                                      |
-| ---------- | ----- | ------------------------------------------------ |
-| `Open`     | 0     | Market is open, users can stake                  |
-| `Locked`   | 1     | Market is locked (match started), no more stakes |
-| `Resolved` | 2     | Winner determined, users can claim winnings      |
+| Status     | Value | Description                                                 |
+| ---------- | ----- | ----------------------------------------------------------- |
+| `Open`     | 0     | Market is open, users can stake                             |
+| `Locked`   | 1     | Match started, no more stakes. Emits `MarketLocked` for CRE |
+| `Resolved` | 2     | Winner determined, users can claim winnings                 |
 
 #### State Variables
 
 | Variable             | Type                        | Description                      |
 | -------------------- | --------------------------- | -------------------------------- |
-| `admin`              | `address`                   | Owner / factory deployer         |
-| `resolver`           | `address`                   | CRE Forwarder address            |
-| `platformWallet`     | `address`                   | Platform fee wallet              |
-| `culturalFundWallet` | `address`                   | Cultural fund fee wallet         |
+| `admin`              | `address`                   | Factory deployer / market admin  |
+| `platformWallet`     | `address`                   | Platform fee wallet (1%)         |
+| `culturalFundWallet` | `address`                   | Cultural preservation fund (1%)  |
 | `token`              | `IERC20`                    | ERC-20 token used for staking    |
 | `eventName`          | `string`                    | Match name                       |
 | `buffaloIdA`         | `string`                    | Buffalo A identifier             |
@@ -99,6 +178,29 @@ Open → Locked → Resolved
 | `stakesA`            | `mapping(address=>uint256)` | Per-user stake on side A         |
 | `stakesB`            | `mapping(address=>uint256)` | Per-user stake on side B         |
 | `claimed`            | `mapping(address=>bool)`    | Whether user has already claimed |
+
+> **Note:** The Forwarder address is stored in `ReceiverTemplate` (accessed via `getForwarderAddress()`). The `resolver` field in the Config struct is passed to `ReceiverTemplate(_cfg.resolver)` at construction.
+
+#### Constructor
+
+```solidity
+constructor(Config memory _cfg, Info memory _info) ReceiverTemplate(_cfg.resolver)
+```
+
+| Config Field         | Description                            |
+| -------------------- | -------------------------------------- |
+| `admin`              | Market admin (can lock the market)     |
+| `resolver`           | CRE Forwarder address (trusted sender) |
+| `platformWallet`     | Platform fee recipient                 |
+| `culturalFundWallet` | Cultural fund recipient                |
+| `token`              | ERC-20 staking token address           |
+
+| Info Field      | Description                           |
+| --------------- | ------------------------------------- |
+| `eventName`     | Match/event name                      |
+| `buffaloIdA`    | Buffalo A's name/identifier           |
+| `buffaloIdB`    | Buffalo B's name/identifier           |
+| `dataSourceUrl` | URL of community data (Facebook post) |
 
 #### Functions
 
@@ -117,21 +219,36 @@ Open → Locked → Resolved
 
 - **Access**: Admin only
 - **Description**: Locks the market when the match starts; no more stakes allowed
-- **Event**: `MarketLocked(market, dataSourceUrl)` — this event is listened to by Chainlink CRE
+- **Event**: `MarketLocked(market, dataSourceUrl)` — this event triggers the Chainlink CRE workflow via Log Trigger
 - **Errors**: `NotAdmin()`, `MarketNotOpen()`
 
-**`resolveMarket(result)`**
+**`onReport(metadata, report)`** _(inherited from ReceiverTemplate)_
 
-- **Access**: Resolver only (Chainlink CRE Forwarder)
-- **Description**: Determines the winner and distributes fees
-- **Parameters**:
-  - `result` (`uint8`) — `1` = Buffalo A wins, `2` = Buffalo B wins, `3` = draw
+- **Access**: CRE Forwarder only
+- **Description**: Entry point for CRE workflow reports. Validates the sender is the trusted Forwarder, then calls `_processReport(report)`
+- **Error**: `InvalidSender(sender, expected)` if caller is not the Forwarder
+
+**`_processReport(report)`** _(internal, overrides ReceiverTemplate)_
+
+- **Description**: Routes the report based on prefix byte
+- **Format**: `report[0] == 0x01` → calls `_resolveMarket(report[1:])`
+- **Data**: `report[1:]` is `abi.encode(uint8 result)` where result is 1, 2, or 3
+
+**`_resolveMarket(data)`** _(internal)_
+
+- **Description**: Decodes the result, sets the winner, distributes fees
 - **Fee Distribution**:
   - 1% of total pool → `platformWallet`
   - 1% of total pool → `culturalFundWallet`
-  - Remaining 98% → `winningPool` (distributed to winners)
+  - Remaining 98% → `winningPool` (distributed to winners proportionally)
 - **Events**: `FeesDistributed(platformFee, culturalFee)`, `MarketResolved(result)`
-- **Errors**: `NotResolver()`, `MarketNotLocked()`, `InvalidWinner()`
+- **Errors**: `MarketNotLocked()`, `InvalidWinner()`
+
+**`resolveMarket(result)`** _(legacy/testing)_
+
+- **Access**: Forwarder address only (via `address(this)` check)
+- **Description**: Direct resolution function kept for manual testing
+- **Note**: In production, CRE uses `onReport()` → `_processReport()` path
 
 **`claimWinnings()`**
 
@@ -141,6 +258,17 @@ Open → Locked → Resolved
 - **Draw case (winner=3)**: All stakers receive proportional refund (minus 2% fees)
 - **Event**: `WinningsClaimed(user, amount)`
 - **Errors**: `MarketNotResolved()`, `AlreadyClaimed()`, `NothingToClaim()`
+
+**`supportsInterface(interfaceId)` → `bool`** _(inherited from ReceiverTemplate)_
+
+- **Access**: Public (pure)
+- **Description**: ERC-165 interface detection. Returns `true` for `IReceiver` and `IERC165` interface IDs
+- **Required by**: CRE Forwarder uses `supportsInterface()` to verify the contract can receive reports
+
+**`getForwarderAddress()` → `address`** _(inherited from ReceiverTemplate)_
+
+- **Access**: Public (view)
+- **Description**: Returns the CRE Forwarder address configured at deployment
 
 **`getTotalPool()` → `uint256`**
 
@@ -154,18 +282,30 @@ Open → Locked → Resolved
 
 #### Custom Errors
 
-| Error                 | Trigger                                                    |
-| --------------------- | ---------------------------------------------------------- |
-| `NotAdmin()`          | Non-admin calls `lockMarket()`                             |
-| `NotResolver()`       | Non-resolver calls `resolveMarket()`                       |
-| `MarketNotOpen()`     | `stake()` or `lockMarket()` called when market is not Open |
-| `MarketNotLocked()`   | `resolveMarket()` called when market is not Locked         |
-| `MarketNotResolved()` | `claimWinnings()` called when market is not Resolved       |
-| `InvalidChoice()`     | `stake()` called with choice other than 1 or 2             |
-| `ZeroAmount()`        | `stake()` called with amount 0                             |
-| `AlreadyClaimed()`    | User calls `claimWinnings()` twice                         |
-| `NothingToClaim()`    | Loser or non-staker calls `claimWinnings()`                |
-| `InvalidWinner()`     | `resolveMarket()` called with result other than 1, 2, or 3 |
+| Error                             | Trigger                                                    |
+| --------------------------------- | ---------------------------------------------------------- |
+| `NotAdmin()`                      | Non-admin calls `lockMarket()` or legacy `resolveMarket()` |
+| `InvalidSender(sender, expected)` | `onReport()` called by non-Forwarder address               |
+| `InvalidForwarderAddress()`       | Constructor called with `address(0)` as resolver           |
+| `MarketNotOpen()`                 | `stake()` or `lockMarket()` called when market is not Open |
+| `MarketNotLocked()`               | Resolution attempted when market is not Locked             |
+| `MarketNotResolved()`             | `claimWinnings()` called when market is not Resolved       |
+| `InvalidChoice()`                 | `stake()` called with choice other than 1 or 2             |
+| `ZeroAmount()`                    | `stake()` called with amount 0                             |
+| `AlreadyClaimed()`                | User calls `claimWinnings()` twice                         |
+| `NothingToClaim()`                | Loser or non-staker calls `claimWinnings()`                |
+| `InvalidWinner()`                 | Resolution called with result other than 1, 2, or 3        |
+
+#### Events
+
+| Event                               | When                                          |
+| ----------------------------------- | --------------------------------------------- |
+| `Staked(user, choice, amount)`      | User stakes tokens on a side                  |
+| `MarketLocked(market, url)`         | Admin locks market → triggers CRE Log Trigger |
+| `FeesDistributed(pFee, cFee)`       | Market resolved, fees sent to wallets         |
+| `MarketResolved(winner)`            | Winner determined (1=A, 2=B, 3=Draw)          |
+| `WinningsClaimed(user, amount)`     | User claims their proportional winnings       |
+| `ForwarderAddressUpdated(old, new)` | Forwarder address set (from ReceiverTemplate) |
 
 ---
 
@@ -199,7 +339,7 @@ ERC-20 faucet token for testnet. Decimals = 6 (same as real USDC).
 
 | Market Name    | Address                                                                                                                          | Buffalo A | Buffalo B | Data Source                                              |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------- | --------- | -------------------------------------------------------- |
-| **pangkasong** | [`0x109920530499795E21f62a38b27242456b189A8a`](https://sepolia.worldscan.org/address/0x109920530499795E21f62a38b27242456b189A8a) | iwan      | lima tiga | [Facebook](https://www.facebook.com/share/p/18Kdtwd3JR/) |
+| **pangkasong** | [`0x7b4EDC62767aac5A2d258D1f7e289406200e6F35`](https://sepolia.worldscan.org/address/0x7b4EDC62767aac5A2d258D1f7e289406200e6F35) | iwan      | lima tiga | [Facebook](https://www.facebook.com/share/p/18Kdtwd3JR/) |
 
 ---
 
@@ -214,11 +354,12 @@ forge build
 ### Test
 
 ```bash
-# Run all tests
+# Run all tests (18 tests across 4 suites)
 forge test -vvv
 
 # Run specific test
 forge test --match-test test_FullFlow_BuffaloAWins -vvv
+forge test --match-test test_SupportsInterface -vvv
 forge test --match-test test_EndToEndFlow -vvv
 ```
 
@@ -273,20 +414,23 @@ forge verify-contract \
 ```
 SmartContracts-TedongSilaga/
 ├── src/
-│   ├── TedongMarket.sol       # Per-match prediction market
-│   ├── MarketFactory.sol      # Factory to deploy markets
-│   └── MockUSDC.sol           # Faucet token for testnet
+│   ├── TedongMarket.sol           # Per-match prediction market (inherits ReceiverTemplate)
+│   ├── MarketFactory.sol          # Factory to deploy markets
+│   ├── MockUSDC.sol               # Faucet token for testnet
+│   └── interfaces/
+│       ├── IReceiver.sol          # CRE Forwarder receiver interface (ERC-165)
+│       └── ReceiverTemplate.sol   # Base contract: validates Forwarder + ERC-165
 ├── test/
-│   ├── TedongMarket.t.sol     # 10 tests (full flow + access control)
-│   ├── MarketFactory.t.sol    # 3 tests (factory flow + access control)
-│   ├── Deploy.t.sol           # 4 tests (deployment simulation)
+│   ├── TedongMarket.t.sol         # 11 tests (full flow + CRE onReport + ERC-165)
+│   ├── MarketFactory.t.sol        # 3 tests (factory flow + access control)
+│   ├── Deploy.t.sol               # 4 tests (deployment simulation)
 │   └── mocks/
-│       └── MockERC20.sol      # Simple mock for unit tests
+│       └── MockERC20.sol          # Simple mock for unit tests
 ├── script/
-│   ├── DeployToken.s.sol      # Deploy MockUSDC only
-│   ├── DeployMarket.s.sol     # Deploy MarketFactory only
-│   ├── CreateMarket.s.sol     # Create market via factory
-│   └── VerifyMarket.s.sol     # Verify deployed market
-├── .env.example               # Required environment variables
-└── foundry.toml               # Foundry configuration
+│   ├── DeployToken.s.sol          # Deploy MockUSDC only
+│   ├── DeployMarket.s.sol         # Deploy MarketFactory only
+│   ├── CreateMarket.s.sol         # Create market via factory
+│   └── VerifyMarket.s.sol         # Verify deployed market
+├── .env.example                   # Required environment variables
+└── foundry.toml                   # Foundry configuration
 ```
