@@ -23,6 +23,10 @@ These spectacular events showcase massive, highly revered water buffaloes clashi
 
 Yet the traditional betting system relies entirely on localized trust, verbal agreements, and word-of-mouth results shared through Facebook groups. There are no verifiable records, no transparency, and no protection against disputes.
 
+The stakes are enormous. A single Rambu Solo' festival can involve **dozens of buffalo matches over several days**, with informal wagers reaching **hundreds of millions of Indonesian Rupiah** per event. But participation has always been limited to those physically present at the ceremony. Only the local Torajan community knows about these high-volume, high-energy events. The rest of the world has never had access.
+
+By bringing this on-chain, we unlock a **completely new prediction market category** for the global crypto community. People worldwide can discover and participate in these thrilling, culturally rich events without needing to travel to the remote highlands of Sulawesi. In return, increased global engagement drives more attention and funding back to the Torajan community. **Everyone wins:** spectators get a unique, exciting market to participate in; the community gets visibility and a sustainable cultural preservation fund.
+
 **Tedong Silaga** bridges this ancient heritage with Web3 technology. We transform localized, opaque wagers into a globally accessible, mathematically fair prediction market. A portion of every pool is automatically routed back to preserving Torajan culture.
 
 ### 📚 Learn More About the Culture
