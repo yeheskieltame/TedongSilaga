@@ -27,6 +27,9 @@ export const metadata: Metadata = {
   description:
     "Predict the winner of traditional Toraja buffalo matches. Earn rewards and build your streak on World Chain with World ID verification.",
   keywords: ["Tedong Silaga", "Toraja", "Prediction Market", "World Chain", "World ID", "Web3 Gaming"],
+  icons: {
+    icon: "/logo.ico",
+  },
   openGraph: {
     title: "Tedong Silaga Arena — Predict & Win",
     description:
