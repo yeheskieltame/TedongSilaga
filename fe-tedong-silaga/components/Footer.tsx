@@ -31,13 +31,15 @@ const Footer = () => {
           <div style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: "1.5rem" }} className="md:col-span-2">
             <Link href="/" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }}>
               <div style={{
-                width: "40px", height: "40px",
-                background: "#6366F1",
-                borderRadius: "10px",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "20px", color: "#fff",
-                boxShadow: "0 0 15px rgba(99,102,241,0.3)",
-              }}>🐃</div>
+                width: "36px",
+                height: "36px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="Tedong Silaga" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+              </div>
               <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "#F9FAFB", fontFamily: "var(--font-heading)" }}>Tedong Silaga</span>
             </Link>
             <p style={{ fontSize: "0.95rem", color: "#9CA3AF", lineHeight: 1.6, maxWidth: "420px" }}>
