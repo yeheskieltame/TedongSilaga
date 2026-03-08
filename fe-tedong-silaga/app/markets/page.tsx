@@ -118,7 +118,7 @@ export default function MarketsPage() {
               </div>
 
               {/* Top-right stat & Admin Actions — desktop only */}
-              <div className="desktop-nav-only" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div className="desktop-nav-only" style={{ display: "flex", alignItems: "center" }}>
                 
                 {/* Admin Create Market Button */}
                 {isAdmin && (
@@ -131,7 +131,8 @@ export default function MarketsPage() {
                       fontSize: "0.8rem", color: "#FFF", fontWeight: 700,
                       display: "flex", alignItems: "center", gap: "8px",
                       cursor: "pointer",
-                      boxShadow: "0 4px 12px rgba(79,107,255,0.3)"
+                      boxShadow: "0 4px 12px rgba(79,107,255,0.3)",
+                      marginBottom: "10px"
                     }}>
                       <PlusCircle size={16} />
                       Create Market
