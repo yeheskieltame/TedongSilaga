@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Lock, ShieldAlert, CheckCircle, X, Loader2, Trophy } from "lucide-react";
+import { Lock, ShieldAlert, CheckCircle, X, Loader2, Coins } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAccount, useReadContracts } from "wagmi";
+import { TEDONG_MARKET_ABI } from "@/constants/tedong_market_abi";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 
@@ -21,7 +23,7 @@ export default function ActionPage() {
   const [loadingMarkets, setLoadingMarkets] = useState(true);
   
   // Modal states
-  const [activeModal, setActiveModal] = useState<"none" | "lock" | "resolve">("none");
+  const [activeModal, setActiveModal] = useState<"none" | "lock" | "resolve" | "claim">("none");
   const [selectedMarketAddress, setSelectedMarketAddress] = useState<string>("");
   
   // Transaction states
@@ -39,7 +41,45 @@ export default function ActionPage() {
     fetchMarkets();
   }, []);
 
-  const openModal = (type: "lock" | "resolve") => {
+  const { address, isConnected } = useAccount();
+
+  // Read staking data for resolved markets to filter claimable ones
+  const resolvedMarkets = markets.filter(m => m.status === "Resolved");
+  
+  const { data: userStakeData } = useReadContracts({
+    contracts: resolvedMarkets.flatMap(m => [
+      {
+        address: m.market_address as `0x${string}`,
+        abi: TEDONG_MARKET_ABI,
+        functionName: "getUserStake",
+        args: [address as `0x${string}`],
+      },
+      {
+        address: m.market_address as `0x${string}`,
+        abi: TEDONG_MARKET_ABI,
+        functionName: "claimed",
+        args: [address as `0x${string}`],
+      }
+    ]),
+    query: {
+      enabled: !!address && resolvedMarkets.length > 0,
+    }
+  });
+
+  const claimableMarkets = resolvedMarkets.filter((m, i) => {
+    if (!userStakeData) return false;
+    const stakeResult = userStakeData[i * 2]?.result as [bigint, bigint] | undefined;
+    const claimedResult = userStakeData[i * 2 + 1]?.result as boolean | undefined;
+    
+    // Has a stake (either side > 0)
+    const hasStake = stakeResult ? (stakeResult[0] > 0n || stakeResult[1] > 0n) : false;
+    // Has NOT claimed yet
+    const hasNotClaimed = claimedResult === false;
+    
+    return hasStake && hasNotClaimed;
+  });
+
+  const openModal = (type: "lock" | "resolve" | "claim") => {
     setActiveModal(type);
     setSelectedMarketAddress("");
     setTxMessage({ type: "", text: "" });
@@ -57,15 +97,12 @@ export default function ActionPage() {
     setTxMessage({ type: "info", text: "Processing transaction..." });
 
     try {
-      const endpoint = activeModal === "lock" ? "/api/action/lock" : "/api/action/resolve";
+      const endpoint = activeModal === "lock" ? "/api/action/lock" : activeModal === "resolve" ? "/api/action/resolve" : "/api/action/claim";
       const currentMarket = markets.find(m => m.market_address === selectedMarketAddress);
       
-      const payload = activeModal === "lock" 
-        ? { marketAddress: selectedMarketAddress }
-        : { 
-            marketAddress: selectedMarketAddress, 
-            tx_locked_hash: currentMarket?.tx_locked_hash
-          };
+      const payload = activeModal === "resolve" 
+        ? { marketAddress: selectedMarketAddress, tx_locked_hash: currentMarket?.tx_locked_hash }
+        : { marketAddress: selectedMarketAddress };
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -97,7 +134,9 @@ export default function ActionPage() {
     }
   };
 
-  const filteredMarkets = markets.filter(m => activeModal === "lock" ? m.status === "Open" : m.status === "Locked");
+  const filteredMarkets = activeModal === "claim" 
+    ? claimableMarkets 
+    : markets.filter(m => activeModal === "lock" ? m.status === "Open" : m.status === "Locked");
 
   return (
     <>
@@ -244,6 +283,31 @@ export default function ActionPage() {
               <CheckCircle size={26} strokeWidth={2.5} />
               <span style={{ fontSize: "0.95rem", fontWeight: 800, letterSpacing: "0.05em" }}>RESOLVE</span>
             </motion.button>
+
+            {/* CLAIM BUTTON */}
+            <motion.button
+              onClick={() => openModal("claim")}
+              whileHover={{ scale: 1.02, backgroundColor: "rgba(236, 72, 153, 0.1)", borderColor: "rgba(236, 72, 153, 0.6)" }}
+              whileTap={{ scale: 0.98 }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                padding: "1rem",
+                borderRadius: "24px",
+                background: "rgba(255,255,255,0.02)",
+                border: "1px solid rgba(236, 72, 153, 0.3)",
+                color: "#EC4899",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+                boxShadow: "0 8px 20px rgba(0,0,0,0.2)",
+              }}
+            >
+              <Coins size={26} strokeWidth={2.5} />
+              <span style={{ fontSize: "0.95rem", fontWeight: 800, letterSpacing: "0.05em" }}>CLAIM</span>
+            </motion.button>
           </div>
         </motion.div>
 
@@ -272,7 +336,7 @@ export default function ActionPage() {
                 exit={{ scale: 0.9, y: 20 }}
                 style={{
                   background: "#0F172A",
-                  border: `1px solid ${activeModal === 'lock' ? "rgba(251,191,36,0.3)" : "rgba(74,222,128,0.3)"}`,
+                  border: `1px solid ${activeModal === 'lock' ? "rgba(251,191,36,0.3)" : activeModal === 'resolve' ? "rgba(74,222,128,0.3)" : "rgba(236,72,153,0.3)"}`,
                   borderRadius: "24px",
                   padding: "1.5rem",
                   width: "100%",
@@ -294,8 +358,8 @@ export default function ActionPage() {
                 </button>
 
                 <h2 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#F8FAFC", display: "flex", alignItems: "center", gap: "8px" }}>
-                  {activeModal === "lock" ? <Lock color="#FBBF24" size={20} /> : <CheckCircle color="#4ADE80" size={20} />}
-                  {activeModal === "lock" ? "Select Market to Lock" : "Select Market to Resolve"}
+                  {activeModal === "lock" ? <Lock color="#FBBF24" size={20} /> : activeModal === "resolve" ? <CheckCircle color="#4ADE80" size={20} /> : <Coins color="#EC4899" size={20} />}
+                  {activeModal === "lock" ? "Select Market to Lock" : activeModal === "resolve" ? "Select Market to Resolve" : "Select Market to Claim"}
                 </h2>
 
                 {txMessage.text && (
@@ -310,7 +374,9 @@ export default function ActionPage() {
                 )}
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minHeight: "200px" }}>
-                  {loadingMarkets ? (
+                  {!isConnected && activeModal === "claim" ? (
+                    <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", color: "#64748B", fontSize: "0.9rem" }}>Please connect wallet to view claimable markets.</div>
+                  ) : loadingMarkets ? (
                     <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", color: "#64748B" }}><Loader2 className="animate-spin" /></div>
                   ) : filteredMarkets.length === 0 ? (
                     <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", color: "#64748B", fontSize: "0.9rem" }}>No {activeModal} markets available.</div>
@@ -322,7 +388,7 @@ export default function ActionPage() {
                         style={{
                           padding: "1rem",
                           borderRadius: "16px",
-                          border: selectedMarketAddress === m.market_address ? `2px solid ${activeModal === 'lock' ? '#FBBF24' : '#4ADE80'}` : "1px solid rgba(255,255,255,0.1)",
+                          border: selectedMarketAddress === m.market_address ? `2px solid ${activeModal === 'lock' ? '#FBBF24' : activeModal === 'resolve' ? '#4ADE80' : '#EC4899'}` : "1px solid rgba(255,255,255,0.1)",
                           background: selectedMarketAddress === m.market_address ? "rgba(255,255,255,0.05)" : "transparent",
                           cursor: isSubmitting ? "not-allowed" : "pointer",
                           opacity: isSubmitting && selectedMarketAddress !== m.market_address ? 0.5 : 1
@@ -361,7 +427,7 @@ export default function ActionPage() {
                     disabled={!selectedMarketAddress || isSubmitting}
                     style={{
                       flex: 1, padding: "1rem", borderRadius: "16px",
-                      background: activeModal === "lock" ? "#FBBF24" : "#4ADE80",
+                      background: activeModal === "lock" ? "#FBBF24" : activeModal === "resolve" ? "#4ADE80" : "#EC4899",
                       color: "#000", fontWeight: 800, fontSize: "0.95rem",
                       border: "none", cursor: (!selectedMarketAddress || isSubmitting) ? "not-allowed" : "pointer",
                       opacity: (!selectedMarketAddress || isSubmitting) ? 0.5 : 1,
