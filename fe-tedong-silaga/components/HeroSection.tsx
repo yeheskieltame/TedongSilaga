@@ -50,6 +50,7 @@ export default function HeroSection({ scrollYProgress }: { scrollYProgress: Moti
           overflow: "hidden"
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img 
           src="/tedong-page.webp" 
           alt="Tedong Silaga Buffalos Background" 

@@ -169,9 +169,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       setStake("");
       setTimeout(() => setStatusMsg({ type: "", text: "" }), 5000);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setStatusMsg({ type: "error", text: err.shortMessage || err.message || "Transaction failed" });
+      let errMsg = "Transaction failed";
+      if (err instanceof Error) {
+        errMsg = (err as { shortMessage?: string }).shortMessage || err.message;
+      }
+      setStatusMsg({ type: "error", text: errMsg });
       setTimeout(() => setStatusMsg({ type: "", text: "" }), 5000);
     } finally {
       setIsStaking(false);
@@ -240,19 +244,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <div className="detail-container">
 
           {/* ── Breadcrumb ── */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.25rem 0 1.5rem" }}>
+          <div style={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.25rem 0 1.5rem" }}>
             <Link href="/markets" style={{
               display: "flex", alignItems: "center", gap: "6px",
               color: "#64748B", fontWeight: 600, fontSize: "0.8rem", textDecoration: "none",
               transition: "color 0.2s",
+              pointerEvents: "auto",
             }}>
               <ArrowLeft size={15} /> Back to Markets
             </Link>
-            <button style={{
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                alert("Link copied to clipboard!");
+              }}
+              style={{
               display: "flex", alignItems: "center", gap: "5px",
               padding: "5px 12px", border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: "8px", background: "rgba(255,255,255,0.03)",
               color: "#64748B", fontSize: "12px", cursor: "pointer",
+              pointerEvents: "auto",
             }}>
               <Share2 size={13} /> Share
             </button>
