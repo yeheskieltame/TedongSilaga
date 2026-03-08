@@ -19,7 +19,6 @@ const NAV_ITEMS = [
   { label: "Market", href: "/markets", icon: Store },
   { label: "Leaderboard", href: "/leaderboard", icon: Trophy },
   { label: "Action", href: "/action", icon: Zap },
-  { label: "Wallet", href: "/wallet", icon: Wallet },
 ];
 
 // ── Desktop Floating Navbar ─────────────────────────────────────────────────
@@ -41,135 +40,133 @@ function DesktopNavbar() {
       className="desktop-nav-only"
       style={{
         position: "fixed",
+        top: 0,
         left: 0,
         right: 0,
-        margin: "0 auto",
-        top: "1rem",
         zIndex: 100,
-        width: "calc(100% - 2rem)",
-        maxWidth: "1080px",
+        padding: "1.25rem 2rem",
+        display: "grid",
+        gridTemplateColumns: "1fr auto 1fr",
+        alignItems: "center",
+        background: isScrolled
+          ? "rgba(2, 6, 23, 0.85)"
+          : "transparent",
+        backdropFilter: isScrolled ? "blur(12px)" : "none",
+        borderBottom: isScrolled ? "1px solid rgba(255,255,255,0.06)" : "none",
+        transition: "all 0.4s ease",
       }}
     >
-      <nav
+      {/* Logo — left */}
+      <Link
+        href="/"
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr auto 1fr",
+          display: "flex",
           alignItems: "center",
-          padding: "0.5rem 0.75rem 0.5rem 1rem",
-          borderRadius: "9999px",
-          background: isScrolled
-            ? "rgba(2, 6, 23, 0.72)"
-            : "rgba(2, 6, 23, 0.45)",
-          backdropFilter: "blur(24px) saturate(180%)",
-          WebkitBackdropFilter: "blur(24px) saturate(180%)",
-          border: `1px solid ${isScrolled ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.06)"}`,
-          boxShadow: isScrolled
-            ? "0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)"
-            : "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)",
-          transition: "all 0.4s cubic-bezier(0.4,0,0.2,1)",
+          gap: "10px",
+          textDecoration: "none",
+          justifySelf: "start",
         }}
       >
-        {/* Logo — left */}
-        <Link
-          href="/"
+        <div
           style={{
+            width: "36px",
+            height: "36px",
             display: "flex",
             alignItems: "center",
-            gap: "10px",
-            textDecoration: "none",
-            flexShrink: 0,
-            justifySelf: "start",
+            justifyContent: "center",
           }}
         >
-          <div
-            style={{
-              width: "36px",
-              height: "36px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Tedong Silaga" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-          </div>
-          <span
-            style={{
-              fontSize: "1.05rem",
-              fontWeight: 800,
-              color: "#F9FAFB",
-              fontFamily: "var(--font-heading)",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            Tedong Silaga
-          </span>
-        </Link>
-
-        {/* Nav Links — center */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.15rem" }}>
-          {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                style={{
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "5px",
-                  padding: "0.4rem 0.7rem",
-                  borderRadius: "9999px",
-                  textDecoration: "none",
-                  fontSize: "0.8rem",
-                  fontWeight: isActive ? 700 : 600,
-                  color: isActive ? "#F9FAFB" : "#94A3B8",
-                  background: isActive
-                    ? "rgba(79, 107, 255, 0.15)"
-                    : "transparent",
-                  transition: "all 0.25s ease",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
-                  if (!isActive) {
-                    e.currentTarget.style.color = "#E2E8F0";
-                    e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                  }
-                }}
-                onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
-                  if (!isActive) {
-                    e.currentTarget.style.color = "#94A3B8";
-                    e.currentTarget.style.background = "transparent";
-                  }
-                }}
-              >
-                <Icon size={14} strokeWidth={isActive ? 2.5 : 2} />
-                <span>{item.label}</span>
-                {isActive && (
-                  <motion.div
-                    layoutId="nav-active-pill"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      borderRadius: "9999px",
-                      border: "1px solid rgba(79,107,255,0.3)",
-                      pointerEvents: "none",
-                    }}
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
-                )}
-              </Link>
-            );
-          })}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Tedong Silaga" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
         </div>
+        <span
+          style={{
+            fontSize: "1.05rem",
+            fontWeight: 800,
+            color: "#F9FAFB",
+            fontFamily: "var(--font-heading)",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Tedong Silaga
+        </span>
+      </Link>
 
-        {/* Wallet Connect — right */}
-        <div style={{ justifySelf: "end" }}>
-          <WalletButton />
-        </div>
+      {/* Nav Links — center pill */}
+      <nav
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.25rem",
+          padding: "0.25rem 0.5rem",
+          borderRadius: "9999px",
+          background: "rgba(255, 255, 255, 0.03)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          backdropFilter: "blur(12px)",
+          justifySelf: "center",
+        }}
+      >
+        {NAV_ITEMS.map((item) => {
+          const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "0.5rem 1.25rem",
+                borderRadius: "9999px",
+                textDecoration: "none",
+                fontSize: "0.85rem",
+                fontWeight: isActive ? 700 : 600,
+                color: isActive ? "#F9FAFB" : "#94A3B8",
+                background: isActive
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "transparent",
+                transition: "all 0.2s ease",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
+                if (!isActive) {
+                  e.currentTarget.style.color = "#E2E8F0";
+                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
+                }
+              }}
+              onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
+                if (!isActive) {
+                  e.currentTarget.style.color = "#94A3B8";
+                  e.currentTarget.style.background = "transparent";
+                }
+              }}
+            >
+              <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
+              <span>{item.label}</span>
+              {isActive && (
+                <motion.div
+                  layoutId="nav-active-pill"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "9999px",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                    pointerEvents: "none",
+                  }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+            </Link>
+          );
+        })}
+        <div style={{ width: "1px", height: "18px", background: "rgba(255, 255, 255, 0.15)", margin: "0 4px" }} />
+        <WalletButton />
       </nav>
+
+      {/* Empty div to preserve exactly perfectly centered CSS grid layout */}
+      <div></div>
     </motion.header>
   );
 }
@@ -184,7 +181,6 @@ function MobileBottomNav() {
     NAV_ITEMS[2], // Leaderboard
     NAV_ITEMS[1], // Market (center, prominent)
     NAV_ITEMS[3], // Action
-    NAV_ITEMS[4], // Wallet
   ];
 
   return (

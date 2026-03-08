@@ -2,20 +2,6 @@ import { createConfig, http } from "wagmi";
 import { injected, walletConnect } from "wagmi/connectors";
 import { defineChain } from "viem";
 
-// ── World Chain Mainnet ─────────────────────────────────────────────────────
-export const worldChain = defineChain({
-  id: 480,
-  name: "World Chain",
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: {
-    default: { http: ["https://worldchain-mainnet.g.alchemy.com/public"] },
-    public:  { http: ["https://worldchain-mainnet.g.alchemy.com/public"] },
-  },
-  blockExplorers: {
-    default: { name: "World Chain Explorer", url: "https://worldchain-mainnet.explorer.alchemy.com" },
-  },
-});
-
 // ── World Chain Sepolia (Testnet) ───────────────────────────────────────────
 export const worldChainSepolia = defineChain({
   id: 4801,
@@ -33,7 +19,7 @@ export const worldChainSepolia = defineChain({
 
 // ── Wagmi Config ───────────────────────────────────────────────────────────
 export const wagmiConfig = createConfig({
-  chains: [worldChain, worldChainSepolia],
+  chains: [worldChainSepolia],
   connectors: [
     injected(),        // Handles MetaMask, Rabby, Coinbase, etc.
     walletConnect({
@@ -41,7 +27,6 @@ export const wagmiConfig = createConfig({
     }),
   ],
   transports: {
-    [worldChain.id]:        http(),
     [worldChainSepolia.id]: http(),
   },
   ssr: true,         // Required for Next.js App Router

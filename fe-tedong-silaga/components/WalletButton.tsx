@@ -9,7 +9,7 @@ import {
   useChainId,
   useSwitchChain,
 } from "wagmi";
-import { worldChain, worldChainSepolia } from "@/lib/wagmi";
+import { worldChainSepolia } from "@/lib/wagmi";
 import { Wallet, X, ChevronDown, ExternalLink, Copy, Check, AlertTriangle } from "lucide-react";
 import { formatUnits } from "viem";
 
@@ -85,7 +85,7 @@ function WalletModal({ onClose }: { onClose: () => void }) {
         }}>
           <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4ADE80", flexShrink: 0 }} />
           <span style={{ fontSize: "12px", fontWeight: 600, color: "#94A3B8" }}>
-            Network: <strong style={{ color: "#F1F5F9" }}>World Chain</strong>
+            Network: <strong style={{ color: "#F1F5F9" }}>World Chain Sepolia (Testnet)</strong>
           </span>
         </div>
 
@@ -158,7 +158,7 @@ function ConnectedDropdown({ address, onDisconnect }: { address: string; onDisco
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { data: balance } = useBalance({ address: address as `0x${string}` });
-  const isWrongChain = chainId !== worldChain.id && chainId !== worldChainSepolia.id;
+  const isWrongChain = chainId !== worldChainSepolia.id;
 
   const copyAddress = () => {
     navigator.clipboard.writeText(address);
@@ -218,7 +218,7 @@ function ConnectedDropdown({ address, onDisconnect }: { address: string; onDisco
       {/* Wrong Network Warning */}
       {isWrongChain && (
         <button
-          onClick={() => switchChain({ chainId: worldChain.id })}
+          onClick={() => switchChain({ chainId: worldChainSepolia.id })}
           style={{
             display: "flex", alignItems: "center", gap: "8px",
             padding: "0.75rem 1rem", borderRadius: "10px",
@@ -226,31 +226,16 @@ function ConnectedDropdown({ address, onDisconnect }: { address: string; onDisco
             color: "#F59E0B", fontSize: "12px", fontWeight: 700, cursor: "pointer", width: "100%",
           }}
         >
-          <AlertTriangle size={14} /> Wrong Network — Switch to World Chain
+          <AlertTriangle size={14} /> Switch to World Chain Sepolia
         </button>
       )}
 
       {/* Network selector */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-        {[
-          { chain: worldChain,        label: "Mainnet" },
-          { chain: worldChainSepolia, label: "Sepolia" },
-        ].map(({ chain, label }) => (
-          <button
-            key={chain.id}
-            onClick={() => switchChain({ chainId: chain.id })}
-            style={{
-              padding: "6px 10px", borderRadius: "8px",
-              border: `1px solid ${chainId === chain.id ? "rgba(79,107,255,0.4)" : "rgba(255,255,255,0.07)"}`,
-              background: chainId === chain.id ? "rgba(79,107,255,0.1)" : "rgba(255,255,255,0.02)",
-              color: chainId === chain.id ? "#818CF8" : "#64748B",
-              fontSize: "12px", fontWeight: 700, cursor: "pointer",
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {!isWrongChain && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "6px", borderRadius: "8px", background: "rgba(79,107,255,0.1)", border: "1px solid rgba(79,107,255,0.4)", color: "#818CF8", fontSize: "12px", fontWeight: 700 }}>
+          <Check size={14} style={{ marginRight: "6px" }} /> Connected to testnet
+        </div>
+      )}
 
       <div style={{ height: "1px", background: "rgba(255,255,255,0.06)" }} />
 
@@ -303,15 +288,18 @@ export default function WalletButton() {
               padding: "8px 14px",
               background: "rgba(79,107,255,0.1)",
               border: "1px solid rgba(79,107,255,0.3)",
-              borderRadius: "10px",
+              borderRadius: "9999px",
               color: "#818CF8", fontWeight: 700, fontSize: "13px",
               cursor: "pointer", transition: "all 0.2s",
             }}
             onMouseEnter={e => (e.currentTarget.style.background = "rgba(79,107,255,0.18)")}
             onMouseLeave={e => (e.currentTarget.style.background = "rgba(79,107,255,0.1)")}
           >
-            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4ADE80", flexShrink: 0 }} />
-            {shortenAddress(address)}
+            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4ADE80", flexShrink: 0, boxShadow: "0 0 8px #4ADE80" }} />
+            <span style={{ color: "#4ADE80" }}>Connected</span>
+            <span style={{ background: "rgba(255,255,255,0.06)", padding: "2px 6px", borderRadius: "6px", fontFamily: "var(--font-mono)", fontSize: "11px", marginLeft: "2px" }}>
+              {shortenAddress(address)}
+            </span>
             <ChevronDown size={14} style={{ opacity: 0.6 }} />
           </button>
 
@@ -335,7 +323,7 @@ export default function WalletButton() {
           padding: "8px 18px",
           background: "linear-gradient(135deg, #4F6BFF, #6366F1)",
           color: "#fff", border: "none",
-          borderRadius: "10px",
+          borderRadius: "9999px",
           fontWeight: 700, fontSize: "14px",
           cursor: "pointer",
           boxShadow: "0 4px 16px rgba(79,107,255,0.3)",
