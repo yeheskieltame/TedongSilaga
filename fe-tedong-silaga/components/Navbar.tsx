@@ -11,6 +11,7 @@ import {
   Store,
 } from "lucide-react";
 import WalletButton from "@/components/WalletButton";
+import FaucetButton from "@/components/FaucetButton";
 
 // ── Menu items ──────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
@@ -161,6 +162,7 @@ function DesktopNavbar() {
           );
         })}
         <div style={{ width: "1px", height: "18px", background: "rgba(255, 255, 255, 0.15)", margin: "0 4px" }} />
+        <FaucetButton />
         <WalletButton />
       </nav>
 
