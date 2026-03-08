@@ -21,6 +21,7 @@ interface BuffaloRank {
   total_match: number;
   total_wins: number;
   total_winning_pool: number;
+  url_embed?: string;
 }
 
 export default function LeaderboardPage() {
@@ -35,7 +36,7 @@ export default function LeaderboardPage() {
       try {
         const { data, error } = await supabase
           .from("buffalo")
-          .select("id, buffalo_name, total_match, total_wins, total_winning_pool")
+          .select("id, buffalo_name, total_match, total_wins, total_winning_pool, url_embed")
           .order("total_wins", { ascending: false })
           .order("total_winning_pool", { ascending: false });
 
@@ -49,6 +50,7 @@ export default function LeaderboardPage() {
              total_match: b.total_match || 0,
              total_wins: b.total_wins || 0,
              total_winning_pool: b.total_winning_pool || 0,
+             url_embed: b.url_embed,
         }));
 
         setLeaderboardData(sorted);
@@ -154,17 +156,24 @@ export default function LeaderboardPage() {
 
                         {/* Avatar circle */}
                         <div style={{
-                          width: isFirst ? "64px" : "52px",
-                          height: isFirst ? "64px" : "52px",
+                          width: isFirst ? "100px" : "80px",
+                          height: isFirst ? "100px" : "80px",
                           borderRadius: "50%",
                           background: "linear-gradient(135deg, #1E293B, #0F172A)",
-                          border: `3px solid ${RANK_COLOR[actualRank] || '#64748B'}`,
+                          border: `4px solid ${RANK_COLOR[actualRank] || '#64748B'}`,
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: isFirst ? "1.5rem" : "1.2rem",
-                          boxShadow: `0 0 20px ${RANK_COLOR[actualRank] || '#64748B'}33`,
+                          fontSize: isFirst ? "2rem" : "1.5rem",
+                          boxShadow: `0 0 30px ${RANK_COLOR[actualRank] || '#64748B'}44`,
                           position: "relative",
+                          overflow: "hidden"
                         }}>
-                          🐃
+                          {player.url_embed && (
+                            <img 
+                              src={player.url_embed} 
+                              alt={player.name} 
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                            />
+                          )}
                         </div>
 
                         {/* Name */}
@@ -177,7 +186,7 @@ export default function LeaderboardPage() {
 
                         {/* Podium block */}
                         <div style={{
-                          width: isFirst ? "100px" : "85px",
+                          width: isFirst ? "120px" : "100px",
                           height: PODIUM_HEIGHT[actualRank] || "2rem",
                           background: PODIUM_BG[actualRank] || "rgba(255,255,255,0.05)",
                           borderRadius: "12px 12px 0 0",
@@ -258,12 +267,21 @@ export default function LeaderboardPage() {
 
                         {/* Avatar */}
                         <div style={{
-                          width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
+                          width: "48px", height: "48px", borderRadius: "50%", flexShrink: 0,
                           background: "linear-gradient(135deg, #1E293B, #0F172A)",
                           border: player.rank <= 3 ? `2px solid ${RANK_COLOR[player.rank]}66` : "1px solid rgba(255,255,255,0.08)",
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: "0.9rem",
-                        }}>🐃</div>
+                          fontSize: "1.2rem",
+                          overflow: "hidden",
+                        }}>
+                          {player.url_embed && (
+                            <img 
+                              src={player.url_embed} 
+                              alt={player.name} 
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                            />
+                          )}
+                        </div>
 
                         {/* Name + verified */}
                         <div style={{ flex: 1, minWidth: 0 }}>
