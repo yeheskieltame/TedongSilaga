@@ -81,7 +81,10 @@ serve({
 
       } catch (err: any) {
         console.error("[API] Failed to run CRE Workflow:", err);
-        return new Response(JSON.stringify({ error: err.message || "Internal server error" }), { 
+        return new Response(JSON.stringify({ 
+          error: err.message || err.stderr || err.stdout || "Internal server error",
+          logs: err.stdout 
+        }), { 
           status: 500,
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });

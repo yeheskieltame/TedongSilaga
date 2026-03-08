@@ -106,13 +106,27 @@ const buildGeminiRequest =
     };
 
     const bodyBytes = new TextEncoder().encode(JSON.stringify(requestData));
-    const body = (Buffer as any).from(bodyBytes).toString('base64');
+    const base64map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let body = "";
+    for (let i = 0; i < bodyBytes.length; i += 3) {
+      const a = bodyBytes[i];
+      const b = i + 1 < bodyBytes.length ? bodyBytes[i + 1] : 0;
+      const c = i + 2 < bodyBytes.length ? bodyBytes[i + 2] : 0;
+      const enc1 = a >> 2;
+      const enc2 = ((a & 3) << 4) | (b >> 4);
+      const enc3 = ((b & 15) << 2) | (c >> 6);
+      const enc4 = c & 63;
+      body += base64map.charAt(enc1) + base64map.charAt(enc2) + 
+              (i + 1 < bodyBytes.length ? base64map.charAt(enc3) : "=") + 
+              (i + 2 < bodyBytes.length ? base64map.charAt(enc4) : "=");
+    }
 
     const resp = sendRequester
       .sendRequest({
         url: `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent`,
         method: 'POST',
         body,
+        timeout: '120s',
         headers: {
           'Content-Type': 'application/json',
           'x-goog-api-key': apiKey,
