@@ -4,6 +4,7 @@
   "main": "dist/main.js",
   "private": true,
   "scripts": {
+    "start": "bun run ../server.ts",
     "postinstall": "bun x cre-setup"
   },
   "license": "UNLICENSED",

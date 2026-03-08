@@ -13,6 +13,7 @@ type Market = {
   buffalo_a_name: string;
   buffalo_b_name: string;
   status: string;
+  tx_locked_hash?: string;
 };
 
 export default function ActionPage() {
@@ -22,7 +23,6 @@ export default function ActionPage() {
   // Modal states
   const [activeModal, setActiveModal] = useState<"none" | "lock" | "resolve">("none");
   const [selectedMarketAddress, setSelectedMarketAddress] = useState<string>("");
-  const [selectedWinner, setSelectedWinner] = useState<number>(0);
   
   // Transaction states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,7 +42,6 @@ export default function ActionPage() {
   const openModal = (type: "lock" | "resolve") => {
     setActiveModal(type);
     setSelectedMarketAddress("");
-    setSelectedWinner(0);
     setTxMessage({ type: "", text: "" });
   };
 
@@ -53,16 +52,20 @@ export default function ActionPage() {
 
   const handleAction = async () => {
     if (!selectedMarketAddress) return;
-    if (activeModal === "resolve" && selectedWinner === 0) return;
 
     setIsSubmitting(true);
     setTxMessage({ type: "info", text: "Processing transaction..." });
 
     try {
       const endpoint = activeModal === "lock" ? "/api/action/lock" : "/api/action/resolve";
+      const currentMarket = markets.find(m => m.market_address === selectedMarketAddress);
+      
       const payload = activeModal === "lock" 
         ? { marketAddress: selectedMarketAddress }
-        : { marketAddress: selectedMarketAddress, winner: selectedWinner };
+        : { 
+            marketAddress: selectedMarketAddress, 
+            tx_locked_hash: currentMarket?.tx_locked_hash
+          };
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -328,29 +331,10 @@ export default function ActionPage() {
                         <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#F1F5F9", marginBottom: "4px" }}>{m.event_name}</div>
                         <div style={{ fontSize: "0.85rem", color: "#94A3B8" }}>{m.buffalo_a_name} vs {m.buffalo_b_name}</div>
                         
-                        {/* Resolve Winner Selection Options */}
+                        {/* Selected for Resolve Hint */}
                         {activeModal === "resolve" && selectedMarketAddress === m.market_address && (
-                          <div style={{ marginTop: "1rem", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-                            {[
-                              { id: 1, label: m.buffalo_a_name },
-                              { id: 2, label: m.buffalo_b_name },
-                              { id: 3, label: "Draw" }
-                            ].map(w => (
-                              <button
-                                key={w.id}
-                                onClick={(e) => { e.stopPropagation(); setSelectedWinner(w.id); }}
-                                disabled={isSubmitting}
-                                style={{
-                                  padding: "8px", borderRadius: "8px", border: selectedWinner === w.id ? "1px solid #4ADE80" : "1px solid rgba(255,255,255,0.1)",
-                                  background: selectedWinner === w.id ? "rgba(74,222,128,0.1)" : "transparent",
-                                  color: selectedWinner === w.id ? "#4ADE80" : "#94A3B8", fontSize: "0.75rem", fontWeight: 600, cursor: isSubmitting ? "not-allowed" : "pointer",
-                                  display: "flex", flexDirection: "column", alignItems: "center", gap: "4px"
-                                }}
-                              >
-                                {selectedWinner === w.id && <Trophy size={14} />}
-                                <span style={{ textAlign: "center", lineHeight: "1.2" }}>{w.label}</span>
-                              </button>
-                            ))}
+                          <div style={{ marginTop: "1rem", padding: "8px", borderRadius: "8px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)" }}>
+                            <p style={{ fontSize: "0.8rem", color: "#4ADE80", textAlign: "center", margin: 0 }}>This market will be resolved automatically by the CRE Workflow.</p>
                           </div>
                         )}
                       </div>
@@ -374,13 +358,13 @@ export default function ActionPage() {
 
                   <button
                     onClick={handleAction}
-                    disabled={!selectedMarketAddress || (activeModal === "resolve" && selectedWinner === 0) || isSubmitting}
+                    disabled={!selectedMarketAddress || isSubmitting}
                     style={{
                       flex: 1, padding: "1rem", borderRadius: "16px",
                       background: activeModal === "lock" ? "#FBBF24" : "#4ADE80",
                       color: "#000", fontWeight: 800, fontSize: "0.95rem",
-                      border: "none", cursor: (!selectedMarketAddress || (activeModal === "resolve" && selectedWinner === 0) || isSubmitting) ? "not-allowed" : "pointer",
-                      opacity: (!selectedMarketAddress || (activeModal === "resolve" && selectedWinner === 0) || isSubmitting) ? 0.5 : 1,
+                      border: "none", cursor: (!selectedMarketAddress || isSubmitting) ? "not-allowed" : "pointer",
+                      opacity: (!selectedMarketAddress || isSubmitting) ? 0.5 : 1,
                       display: "flex", alignItems: "center", justifyContent: "center", gap: "8px"
                     }}
                   >

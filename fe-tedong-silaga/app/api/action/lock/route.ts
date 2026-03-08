@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     // Optional: aggressively update Supabase to avoid waiting for indexer sync during demo
     await supabase
       .from("markets")
-      .update({ status: "Locked" })
+      .update({ status: "Locked", tx_locked_hash: hash })
       .eq("market_address", marketAddress);
 
     return NextResponse.json({ success: true, hash });

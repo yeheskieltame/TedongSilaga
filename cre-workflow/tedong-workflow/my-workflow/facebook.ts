@@ -100,7 +100,9 @@ const buildApifyRequest =
     console.log(`[Apify RAW] status=${resp.statusCode} body=${bodyText.substring(0, 500)}`);
 
     if (!ok(resp)) {
-      throw new Error(`Apify API error: ${resp.statusCode} - ${bodyText.substring(0, 200)}`);
+      // eslint-disable-next-line no-console
+      console.log(`[Apify API error] ${resp.statusCode} - ${bodyText.substring(0, 200)}`);
+      return { statusCode: resp.statusCode, postCount: 0, matchedText: "" };
     }
 
     // Parse response — Apify returns an array of post objects
