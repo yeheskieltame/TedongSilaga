@@ -12,11 +12,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "marketAddress is required" }, { status: 400 });
     }
 
-    const privateKey = process.env.ADMIN_PRIVATE_KEY || "0xc3a0e7d379f74bb69326baf011a897edff2502c849f59b1ca4b0bf8d7437139a";
+    const privateKey = process.env.ADMIN_PRIVATE_KEY;
+    if (!privateKey) {
+      return NextResponse.json({ error: "ADMIN_PRIVATE_KEY is missing in env" }, { status: 500 });
+    }
+    
     const account = privateKeyToAccount(privateKey as `0x${string}`);
 
-    // Determine network based on env, defaulting to World Chain Sepolia
-    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "https://worldchain-sepolia.g.alchemy.com/public";
+    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
+    if (!rpcUrl) {
+      return NextResponse.json({ error: "NEXT_PUBLIC_RPC_URL is missing in env" }, { status: 500 });
+    }
 
     const client = createWalletClient({
       account,
@@ -44,10 +50,14 @@ export async function POST(req: Request) {
       .eq("market_address", marketAddress);
 
     return NextResponse.json({ success: true, hash });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Lock error:", error);
+    let msg = "Internal Error";
+    if (error instanceof Error) {
+       msg = (error as { shortMessage?: string }).shortMessage || error.message;
+    }
     return NextResponse.json(
-      { error: error?.shortMessage || error?.message || "Internal Error" },
+      { error: msg },
       { status: 500 }
     );
   }
