@@ -7,10 +7,11 @@ import {
   ArrowLeft, Share2, CheckCircle2, MapPin, Lock
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useAccount, useBalance, useReadContract } from "wagmi";
-import { formatUnits } from "viem";
+import { useAccount, useBalance, useReadContract, useWriteContract, usePublicClient } from "wagmi";
+import { formatUnits, parseUnits } from "viem";
 import { supabase } from "@/lib/supabase";
 import { TEDONG_MARKET_ABI } from "@/constants/tedong_market_abi";
+import { MOCK_USDC_ADDRESS, MOCK_USDC_ABI } from "@/constants/contracts";
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; border: string; label: string; pulse: boolean }> = {
   Open:     { color: "#4ADE80", bg: "rgba(74,222,128,0.1)",   border: "rgba(74,222,128,0.25)",   label: "Live · Open",     pulse: true  },
@@ -112,15 +113,70 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   
   const { address, isConnected } = useAccount();
-  const { data: balanceData } = useBalance({ address });
+  const { data: balanceData } = useBalance({ 
+    address, 
+    token: MOCK_USDC_ADDRESS as `0x${string}` 
+  });
 
   const [marketData, setMarketData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [selectedBuffalo, setSelectedBuffalo] = useState<"A" | "B" | null>(null);
   const [stake, setStake] = useState("");
+  const [isStaking, setIsStaking] = useState(false);
+  const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
+
+  const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
 
   const isVerified = true;
+
+  const handleStake = async () => {
+    if (!isConnected || !selectedBuffalo || !stake || !isVerified) return;
+    
+    setIsStaking(true);
+    setStatusMsg({ type: "loading", text: "Initiating Transaction..." });
+
+    try {
+      const parsedAmount = parseUnits(stake, 6); // USDC 6 decimals
+      const choice = selectedBuffalo === "A" ? 1 : 2;
+
+      // 1. Approve USDC
+      setStatusMsg({ type: "loading", text: "Approving USDC..." });
+      const approveTxHash = await writeContractAsync({
+        address: MOCK_USDC_ADDRESS as `0x${string}`,
+        abi: MOCK_USDC_ABI,
+        functionName: "approve",
+        args: [id as `0x${string}`, parsedAmount],
+      });
+
+      setStatusMsg({ type: "loading", text: "Waiting for approval confirmation..." });
+      await publicClient!.waitForTransactionReceipt({ hash: approveTxHash });
+
+      // 2. Stake in Market Contract
+      setStatusMsg({ type: "loading", text: "Confirming prediction in wallet..." });
+      const stakeTxHash = await writeContractAsync({
+        address: id as `0x${string}`,
+        abi: TEDONG_MARKET_ABI,
+        functionName: "stake",
+        args: [choice, parsedAmount],
+      });
+
+      setStatusMsg({ type: "loading", text: "Waiting for stake confirmation..." });
+      await publicClient!.waitForTransactionReceipt({ hash: stakeTxHash });
+
+      setStatusMsg({ type: "success", text: "Prediction confirmed! Good luck." });
+      setStake("");
+      setTimeout(() => setStatusMsg({ type: "", text: "" }), 5000);
+      
+    } catch (err: any) {
+      console.error(err);
+      setStatusMsg({ type: "error", text: err.shortMessage || err.message || "Transaction failed" });
+      setTimeout(() => setStatusMsg({ type: "", text: "" }), 5000);
+    } finally {
+      setIsStaking(false);
+    }
+  };
 
   // Supabase Fetch
   useEffect(() => {
@@ -388,21 +444,35 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       ))}
                     </div>
 
+                    {/* Status Message */}
+                    {statusMsg.text && (
+                      <div style={{
+                        padding: "0.85rem", borderRadius: "12px", marginBottom: "0.75rem",
+                        background: statusMsg.type === "error" ? "rgba(239,68,68,0.1)" : statusMsg.type === "success" ? "rgba(34,197,94,0.1)" : "rgba(79,107,255,0.1)",
+                        border: `1px solid ${statusMsg.type === "error" ? "rgba(239,68,68,0.3)" : statusMsg.type === "success" ? "rgba(34,197,94,0.3)" : "rgba(79,107,255,0.3)"}`,
+                        color: statusMsg.type === "error" ? "#F87171" : statusMsg.type === "success" ? "#4ADE80" : "#818CF8",
+                        fontSize: "0.75rem", fontWeight: 600, textAlign: "center"
+                      }}>
+                        {statusMsg.text}
+                      </div>
+                    )}
+
                     {/* CTA */}
                     <button
-                      disabled={!isConnected || !selectedBuffalo || !stake || !isVerified}
+                      onClick={handleStake}
+                      disabled={!isConnected || !selectedBuffalo || !stake || !isVerified || isStaking}
                       style={{
                         width: "100%", padding: "0.9rem", borderRadius: "14px", border: "none",
-                        background: isConnected && selectedBuffalo && stake && isVerified
+                        background: (isConnected && selectedBuffalo && stake && isVerified && !isStaking)
                           ? "linear-gradient(135deg, #4F6BFF, #6366F1)" : "rgba(255,255,255,0.05)",
-                        color: isConnected && selectedBuffalo && stake && isVerified ? "#fff" : "#334155",
+                        color: (isConnected && selectedBuffalo && stake && isVerified && !isStaking) ? "#fff" : "#334155",
                         fontSize: "0.85rem", fontWeight: 800,
-                        cursor: (isConnected && selectedBuffalo && stake && isVerified) ? "pointer" : "not-allowed",
-                        boxShadow: (isConnected && selectedBuffalo && stake && isVerified) ? "0 8px 24px rgba(79,107,255,0.3)" : "none",
+                        cursor: (isConnected && selectedBuffalo && stake && isVerified && !isStaking) ? "pointer" : "not-allowed",
+                        boxShadow: (isConnected && selectedBuffalo && stake && isVerified && !isStaking) ? "0 8px 24px rgba(79,107,255,0.3)" : "none",
                         transition: "all 0.25s",
                       }}
                     >
-                      {!isConnected ? "Connect Wallet" : !selectedBuffalo ? "Select Buffalo First" : !stake ? "Enter amount" : "Confirm Prediction →"}
+                      {isStaking ? "Processing..." : !isConnected ? "Connect Wallet" : !selectedBuffalo ? "Select Buffalo First" : !stake ? "Enter amount" : "Confirm Prediction →"}
                     </button>
                   </>
                 )}

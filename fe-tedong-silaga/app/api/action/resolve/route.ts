@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "marketAddress and winner are required" }, { status: 400 });
     }
 
-    const privateKey = process.env.ADMIN_PRIVATE_KEY || "0xc3a0e7d379f74bb69326baf011a897edff2502c849f59b1ca4b0bf8d7437139a";
+    const privateKey = process.env.ADMIN_PRIVATE_KEY;
     const account = privateKeyToAccount(privateKey as `0x${string}`);
 
     // Determine network based on env, defaulting to World Chain Sepolia

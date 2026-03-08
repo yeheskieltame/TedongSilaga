@@ -406,30 +406,32 @@ h6 {
 }
 .hero-btn-primary {
   padding: 1rem 2.5rem;
-  background: #4f6bff;
+  background: linear-gradient(135deg, #4f6bff, #818cf8);
   color: #fff;
-  border-radius: 14px;
+  border-radius: 9999px; /* pill shape */
   font-weight: 700;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   box-shadow: 0 10px 40px rgba(79, 107, 255, 0.4);
 }
 .hero-btn-secondary {
   padding: 1rem 2.5rem;
   background: rgba(255, 255, 255, 0.03);
   color: #e5e7eb;
-  border-radius: 14px;
+  border-radius: 9999px; /* pill shape */
   font-weight: 700;
   border: 1px solid rgba(255, 255, 255, 0.12);
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   backdrop-filter: blur(12px);
 }
 
@@ -460,9 +462,9 @@ h6 {
   }
   .hero-btn-primary,
   .hero-btn-secondary {
-    padding: 0.75rem 1.5rem;
-    font-size: 0.8rem;
-    border-radius: 12px;
+    padding: 0.85rem 1.5rem;
+    font-size: 0.85rem;
+    border-radius: 9999px;
     gap: 6px;
   }
 }
