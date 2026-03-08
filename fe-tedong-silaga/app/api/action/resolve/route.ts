@@ -81,13 +81,14 @@ export async function POST(req: Request) {
 
         // 3. Fungsi pembantu untuk mengupdate 1 kerbau
         const updateBuffaloStats = async (name: string, isWinner: boolean) => {
-          const { data: currentBuffalo } = await supabase
+          const { data } = await supabase
             .from("buffalo")
             .select("id, total_match, total_wins, total_winning_pool")
             .ilike("buffalo_name", name)
-            .maybeSingle();
+            .limit(1);
 
-          if (currentBuffalo) {
+          if (data && data.length > 0) {
+            const currentBuffalo = data[0];
             await supabase
               .from("buffalo")
               .update({

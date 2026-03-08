@@ -36,13 +36,13 @@ export async function GET() {
       for (const m of existingBase) {
         for (const bName of [m.buffalo_a_name, m.buffalo_b_name]) {
           if (!bName) continue;
-          const { data: existingBuffalo } = await supabase
+          const { data: existingBuffalos } = await supabase
             .from("buffalo")
             .select("id")
             .ilike("buffalo_name", bName)
-            .single();
+            .limit(1);
             
-          if (!existingBuffalo) {
+          if (!existingBuffalos || existingBuffalos.length === 0) {
             await supabase.from("buffalo").insert([{ buffalo_name: bName }]);
             console.log(`Backward synced missing legacy buffalo: ${bName}`);
           }
@@ -88,13 +88,13 @@ export async function GET() {
         const buffalosToEnsure = [buffaloIdA, buffaloIdB];
         for (const bName of buffalosToEnsure) {
           if (!bName) continue;
-          const { data: existingBuffalo } = await supabase
+          const { data: existingBuffalos } = await supabase
             .from("buffalo")
             .select("id")
             .ilike("buffalo_name", bName)
-            .single();
+            .limit(1);
             
-          if (!existingBuffalo) {
+          if (!existingBuffalos || existingBuffalos.length === 0) {
             await supabase.from("buffalo").insert([{ buffalo_name: bName }]);
             console.log(`Synced missing buffalo payload to leaderboard: ${bName}`);
           }
