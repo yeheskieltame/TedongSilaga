@@ -1,48 +1,53 @@
 import { NextResponse } from "next/server";
-import { createWalletClient, http, publicActions } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { createPublicClient, http } from "viem";
 import { TEDONG_MARKET_ABI } from "@/constants/tedong_market_abi";
 import { supabase } from "@/lib/supabase";
 
 export async function POST(req: Request) {
   try {
-    const { marketAddress, winner } = await req.json();
+    const { marketAddress, tx_locked_hash } = await req.json();
 
-    if (!marketAddress || !winner) {
-      return NextResponse.json({ error: "marketAddress and winner are required" }, { status: 400 });
+    if (!marketAddress || !tx_locked_hash) {
+      return NextResponse.json({ error: "marketAddress and tx_locked_hash are required" }, { status: 400 });
     }
-
-    const privateKey = process.env.ADMIN_PRIVATE_KEY;
-    if (!privateKey) {
-      return NextResponse.json({ error: "ADMIN_PRIVATE_KEY is missing in env" }, { status: 500 });
-    }
-    
-    const account = privateKeyToAccount(privateKey as `0x${string}`);
 
     const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
     if (!rpcUrl) {
       return NextResponse.json({ error: "NEXT_PUBLIC_RPC_URL is missing in env" }, { status: 500 });
     }
 
-    const client = createWalletClient({
-      account,
-      transport: http(rpcUrl),
-    }).extend(publicActions);
+    console.log(`Calling standalone CRE API server (localhost:8081) for market ${marketAddress} with lock tx: ${tx_locked_hash}`);
 
-    console.log(`Resolving market ${marketAddress} with winner ${winner} by admin ${account.address}`);
-
-    const { request } = await client.simulateContract({
-      account,
-      address: marketAddress as `0x${string}`,
-      abi: TEDONG_MARKET_ABI,
-      functionName: "resolveMarket",
-      args: [winner],
+    // Call the external CRE API service
+    const creApiUrl = process.env.CRE_API_URL || "http://localhost:8081/api/resolve";
+    
+    const creResponse = await fetch(creApiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        marketAddress,
+        tx_locked_hash
+      })
     });
 
-    const hash = await client.writeContract(request);
+    if (!creResponse.ok) {
+      const errorData = await creResponse.json();
+      console.error("CRE API failed:", errorData);
+      throw new Error(errorData.error || "CRE API Server Error");
+    }
+
+    const creData = await creResponse.json();
+    console.log("CRE Data:", creData.winner, creData.txHash);
     
-    // Wait for receipt
-    await client.waitForTransactionReceipt({ hash });
+    // Extract winner and transaction hash from CRE API response
+    const winner = creData.winner || 3; 
+    const hash = creData.txHash || null;
+
+    if (!hash || hash === "unknown") {
+      console.warn("CRE workflow finished but returned unknown settlement txHash.");
+    }
 
     // Aggressive Supabase update for the demo UI
     await supabase
@@ -54,7 +59,6 @@ export async function POST(req: Request) {
     // UPDATE BUFFALO LEADERBOARD STATS
     // =========================================================
     try {
-      // 1. Dapatkan nama kerbau dari tabel markets
       const { data: marketData } = await supabase
         .from("markets")
         .select("buffalo_a_name, buffalo_b_name")
@@ -62,7 +66,11 @@ export async function POST(req: Request) {
         .single();
 
       if (marketData) {
-        // 2. Baca Total Pool dari Smart Contract saat ini (USDC 6 decimals)
+        // We only need a public client to read the total pool
+        const client = createPublicClient({
+          transport: http(rpcUrl),
+        });
+        
         const totalPoolRaw = await client.readContract({
           address: marketAddress as `0x${string}`,
           abi: TEDONG_MARKET_ABI,
@@ -96,14 +104,13 @@ export async function POST(req: Request) {
         // 4. Update kedua kerbau
         await updateBuffaloStats(marketData.buffalo_a_name, winner === 1);
         await updateBuffaloStats(marketData.buffalo_b_name, winner === 2);
-        console.log(`Leaderboard updated for ${marketData.buffalo_a_name} & ${marketData.buffalo_b_name}`);
+        console.log(`Leaderboard updated for ${marketData.buffalo_a_name} & ${marketData.buffalo_b_name} based on CRE result`);
       }
     } catch (err) {
       console.error("Failed to update buffalo leaderboard stats:", err);
-      // We don't throw here to ensure the resolve HTTP response still returns success.
     }
 
-    return NextResponse.json({ success: true, hash });
+    return NextResponse.json({ success: true, hash: hash || "unknown", source: "cre-workflow" });
   } catch (error: unknown) {
     console.error("Resolve error:", error);
     let msg = "Internal Error";
