@@ -209,11 +209,11 @@ h6 {
   font-size: 2rem;
   font-weight: 800;
   letter-spacing: -0.03em;
-  color: #F8FAFC;
+  color: #f8fafc;
   margin-bottom: 0.4rem;
 }
 .markets-subtitle {
-  color: #64748B;
+  color: #64748b;
   font-size: 0.9rem;
 }
 .markets-stats-row {
@@ -273,12 +273,12 @@ h6 {
 .match-card-emoji {
   font-size: 2rem;
   margin-bottom: 0.5rem;
-  filter: drop-shadow(0 0 12px rgba(79,107,255,0.2));
+  filter: drop-shadow(0 0 12px rgba(79, 107, 255, 0.2));
 }
 .match-card-name {
   font-weight: 800;
   font-size: 0.95rem;
-  color: #F8FAFC;
+  color: #f8fafc;
   letter-spacing: -0.02em;
 }
 .match-card-btn {
@@ -287,13 +287,13 @@ h6 {
 .match-carousel-title {
   font-size: clamp(1.8rem, 5vw, 3.2rem);
   font-weight: 900;
-  color: #F8FAFC;
+  color: #f8fafc;
   letter-spacing: -0.05em;
   line-height: 1;
   margin-bottom: 0.5rem;
 }
 .match-carousel-desc {
-  color: #94A3B8;
+  color: #94a3b8;
   font-size: 0.9rem;
   font-weight: 400;
   line-height: 1.5;
@@ -341,7 +341,7 @@ h6 {
 .explanation-card-title {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #F8FAFC;
+  color: #f8fafc;
   margin-bottom: 0.85rem;
   letter-spacing: -0.03em;
 }
@@ -367,7 +367,7 @@ h6 {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.25em;
-  color: #4F6BFF;
+  color: #4f6bff;
   text-transform: uppercase;
   margin-bottom: 1.25rem;
   display: block;
@@ -375,7 +375,7 @@ h6 {
 .hero-heading {
   font-size: clamp(3rem, 10vw, 7rem);
   font-weight: 900;
-  color: #F8FAFC;
+  color: #f8fafc;
   line-height: 0.95;
   letter-spacing: -0.05em;
   margin-bottom: 1.25rem;
@@ -383,13 +383,13 @@ h6 {
 .hero-subheading {
   font-size: clamp(1.3rem, 5vw, 3rem);
   font-weight: 800;
-  color: #EAB308;
+  color: #eab308;
   letter-spacing: -0.02em;
   margin-bottom: 2rem;
 }
 .hero-desc {
   font-size: 1.15rem;
-  color: #94A3B8;
+  color: #94a3b8;
   max-width: 600px;
   margin: 0 auto;
   line-height: 1.65;
@@ -406,7 +406,7 @@ h6 {
 }
 .hero-btn-primary {
   padding: 1rem 2.5rem;
-  background: #4F6BFF;
+  background: #4f6bff;
   color: #fff;
   border-radius: 14px;
   font-weight: 700;
@@ -416,15 +416,15 @@ h6 {
   align-items: center;
   gap: 8px;
   font-size: 0.9rem;
-  box-shadow: 0 10px 40px rgba(79,107,255,0.4);
+  box-shadow: 0 10px 40px rgba(79, 107, 255, 0.4);
 }
 .hero-btn-secondary {
   padding: 1rem 2.5rem;
-  background: rgba(255,255,255,0.03);
-  color: #E5E7EB;
+  background: rgba(255, 255, 255, 0.03);
+  color: #e5e7eb;
   border-radius: 14px;
   font-weight: 700;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -478,11 +478,11 @@ h6 {
   font-size: 2rem;
   font-weight: 900;
   letter-spacing: -0.04em;
-  color: #F8FAFC;
+  color: #f8fafc;
   margin-bottom: 0.3rem;
 }
 .lb-subtitle {
-  color: #64748B;
+  color: #64748b;
   font-size: 0.85rem;
 }
 .lb-podium {
@@ -496,7 +496,7 @@ h6 {
 .lb-podium-name {
   font-weight: 700;
   font-size: 0.75rem;
-  color: #E2E8F0;
+  color: #e2e8f0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -544,14 +544,14 @@ h6 {
   font-size: 1.75rem;
   font-weight: 900;
   letter-spacing: -0.04em;
-  color: #F8FAFC;
+  color: #f8fafc;
 }
 .detail-stats-bar {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 14px;
   overflow: hidden;
   margin-bottom: 2rem;
@@ -591,7 +591,7 @@ h6 {
 .detail-buffalo-name {
   font-weight: 900;
   font-size: 1.05rem;
-  color: #F8FAFC;
+  color: #f8fafc;
   letter-spacing: -0.03em;
 }
 .detail-stats-grid {
@@ -651,3 +651,9 @@ h6 {
   }
 }
 
+/* ── Embedded Iframes (HTML) ── */
+.embed-responsive iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+}

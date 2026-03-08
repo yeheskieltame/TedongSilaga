@@ -70,22 +70,36 @@ export default function MarketsPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    async function fetchMarkets() {
-      try {
-        const { data, error } = await supabase
-          .from("markets")
-          .select("*")
-          .order("created_at", { ascending: false });
-        
-        if (error) throw error;
+    async function fetchFromSupabase() {
+      const { data, error } = await supabase
+        .from("markets")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (!error) {
         setMarkets(data || []);
+      }
+      setLoading(false);
+    }
+
+    async function processMarkets() {
+      // 1. Initial quick load from Supabase
+      await fetchFromSupabase();
+
+      // 2. Background sync from blockchain
+      try {
+        const syncRes = await fetch("/api/market/sync");
+        const syncData = await syncRes.json();
+        
+        // 3. If new markets were synced, refresh the UI
+        if (syncData && syncData.synced > 0) {
+          await fetchFromSupabase();
+        }
       } catch (e) {
-        console.error("Failed to fetch markets", e);
-      } finally {
-        setLoading(false);
+        console.error("Failed to sync markets", e);
       }
     }
-    fetchMarkets();
+    processMarkets();
   }, []);
 
   // For now, filtering only by search text since status is dynamic in contract

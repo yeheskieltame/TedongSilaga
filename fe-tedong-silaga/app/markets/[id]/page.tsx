@@ -45,12 +45,12 @@ function BuffaloCard({ side, name, embedUrl, color, isOpen, isSelected, isWinner
         cursor: isOpen ? "pointer" : "default",
         position: "relative",
         transition: "all 0.25s",
-        display: "flex", flexDirection: "column", gap: "1rem", padding: "1.25rem"
+        display: "flex", flexDirection: "column", gap: "0.85rem", padding: "1rem"
       }}
     >
       {isSelected && (
         <div style={{ position: "absolute", top: "12px", right: "12px", zIndex: 10 }}>
-          <CheckCircle2 size={18} color={color} fill={color} stroke="#1E293B" />
+          <CheckCircle2 size={16} color={color} fill={color} stroke="#1E293B" />
         </div>
       )}
       {isWinner && matchStatus === "Resolved" && (
@@ -62,34 +62,27 @@ function BuffaloCard({ side, name, embedUrl, color, isOpen, isSelected, isWinner
         }}>WINNER</div>
       )}
 
-      {/* Avatar + name */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
-        <div className="detail-buffalo-avatar" style={{
-          borderRadius: "50%",
-          width: "48px", height: "48px",
-          border: `2px solid ${isSelected ? color : "rgba(255,255,255,0.08)"}`,
-          background: "linear-gradient(135deg, #1E293B, #0F172A)",
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px",
-          transition: "border-color 0.25s",
-        }}>🐃</div>
-        <div>
-          <div className="detail-buffalo-name" style={{ fontSize: "1.2rem", fontWeight: 800, color: "#F8FAFC" }}>{name}</div>
-          <div style={{ fontSize: "0.8rem", color: color, fontWeight: 700 }}>Pool: {pool}</div>
-        </div>
+      {/* Name and Pool */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "0.25rem", marginBottom: "0.75rem" }}>
+        <div className="detail-buffalo-name" style={{ fontSize: "0.95rem", fontWeight: 800, color: "#F8FAFC", wordBreak: "break-word" }}>{name}</div>
+        <div style={{ fontSize: "0.7rem", color: color, fontWeight: 700 }}>Pool: {pool}</div>
       </div>
 
       {/* Embed Container */}
       {embedUrl ? (
-        <div style={{ width: "100%", borderRadius: "12px", overflow: "hidden", aspectRatio: "16/9", background: "#000", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ width: "100%", borderRadius: "10px", overflow: "hidden", height: "200px", background: "#000", border: "1px solid rgba(255,255,255,0.1)" }}>
           <iframe 
-            src={embedUrl} 
+            src={embedUrl}
             allowFullScreen 
-            style={{ width: "100%", height: "100%", border: "none" }}
+            scrolling="no"
+            frameBorder="0"
+            style={{ width: "100%", height: "100%", border: "none", overflow: "hidden" }}
             title={`${name} Video Embed`}
+            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
           />
         </div>
       ) : (
-         <div style={{ width: "100%", borderRadius: "12px", aspectRatio: "16/9", background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748B", fontSize: "0.8rem" }}>
+         <div style={{ width: "100%", borderRadius: "10px", height: "200px", background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748B", fontSize: "0.75rem" }}>
            No embed link available
          </div>
       )}
@@ -99,16 +92,16 @@ function BuffaloCard({ side, name, embedUrl, color, isOpen, isSelected, isWinner
         <button
           onClick={(e) => { e.stopPropagation(); onSelect(); }}
           style={{
-            width: "100%", padding: "0.8rem",
-            borderRadius: "10px", marginTop: "0.5rem",
+            width: "100%", padding: "0.65rem",
+            borderRadius: "10px", marginTop: "0.25rem",
             border: `1px solid ${isSelected ? color : "rgba(255,255,255,0.08)"}`,
             background: isSelected ? `rgba(${side === "A" ? "74,222,128" : "248,113,113"},0.15)` : "rgba(255,255,255,0.04)",
             color: isSelected ? color : "#94A3B8",
-            fontWeight: 700, fontSize: "0.9rem", cursor: "pointer",
+            fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
             transition: "all 0.2s",
           }}
         >
-          {isSelected ? `✓ ${name} Selected` : `Select ${name}`}
+          {isSelected ? `✓ Selected` : `Select`}
         </button>
       )}
     </motion.div>
@@ -223,56 +216,73 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           <div style={{
             borderBottom: "1px solid rgba(255,255,255,0.06)",
             paddingBottom: "1.5rem", marginBottom: "1.5rem",
-            display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem"
           }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.6rem", flexWrap: "wrap" }}>
-                <span style={{
-                  display: "inline-flex", alignItems: "center", gap: "5px",
-                  padding: "4px 12px", borderRadius: "999px",
-                  background: sc.bg, border: `1px solid ${sc.border}`,
-                  fontSize: "11px", fontWeight: 700, color: sc.color,
-                  textTransform: "uppercase", letterSpacing: "0.08em",
-                }}>
-                  <span style={{
-                    width: "6px", height: "6px", borderRadius: "50%",
-                    background: sc.color, display: "inline-block",
-                    ...(sc.pulse ? { animation: "pulse 2s infinite" } : {})
-                  }} />
-                  {sc.label}
-                </span>
-                <span style={{ color: "#475569", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <MapPin size={12} /> {(marketData.arena_name as string) || "Unknown Arena"}
-                </span>
-              </div>
-              <h1 className="detail-match-title" style={{ marginTop: "1rem" }}>
-                {marketData.buffalo_a_name as string} <span style={{ color: "#334155", margin: "0 10px", fontSize: "1.5rem" }}>VS</span> {marketData.buffalo_b_name as string}
-              </h1>
-              <p style={{ color: "#94A3B8", marginTop: "8px", fontSize: "1.1rem", fontWeight: 600 }}>
-                {marketData.event_name as string}
-              </p>
-            </div>
-            
-            {/* Poster Embed */}
-            {Boolean(marketData.embed_poster) && (
-              <div style={{ 
-                width: "200px", height: "120px", borderRadius: "12px", overflow: "hidden", 
-                border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.5)" 
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.6rem", flexWrap: "wrap" }}>
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: "5px",
+                padding: "4px 12px", borderRadius: "999px",
+                background: sc.bg, border: `1px solid ${sc.border}`,
+                fontSize: "11px", fontWeight: 700, color: sc.color,
+                textTransform: "uppercase", letterSpacing: "0.08em",
               }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={marketData.embed_poster as string} alt="Event Poster" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              </div>
-            )}
+                <span style={{
+                  width: "6px", height: "6px", borderRadius: "50%",
+                  background: sc.color, display: "inline-block",
+                  ...(sc.pulse ? { animation: "pulse 2s infinite" } : {})
+                }} />
+                {sc.label}
+              </span>
+              <span style={{ color: "#475569", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "4px" }}>
+                <MapPin size={12} /> {(marketData.arena_name as string) || "Unknown Arena"}
+              </span>
+            </div>
+            <h1 className="detail-match-title" style={{ marginTop: "1rem" }}>
+              {marketData.buffalo_a_name as string} <span style={{ color: "#334155", margin: "0 10px", fontSize: "1.5rem" }}>VS</span> {marketData.buffalo_b_name as string}
+            </h1>
+            <p style={{ color: "#94A3B8", marginTop: "8px", fontSize: "1.1rem", fontWeight: 600 }}>
+              {marketData.event_name as string}
+            </p>
           </div>
 
           {/* ── Main Layout: Buffalo cards + Staking ── */}
           <div className="detail-main-grid">
 
-            {/* Left: Buffalo cards */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            {/* Left: Event Poster + Buffalo cards (Vertical Stack) */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+              
+              {/* Event Poster (Main & Vertically large) */}
+              {Boolean(marketData.embed_poster) && (
+                <div style={{ 
+                  width: "100%", 
+                  borderRadius: "20px", overflow: "hidden", 
+                  border: "1px solid rgba(255,255,255,0.1)", background: "#fff",
+                  display: "flex", justifyContent: "center", alignItems: "center",
+                  minHeight: "400px",
+                }}>
+                  {((marketData.embed_poster as string).includes("facebook.com") || (marketData.embed_poster as string).includes("youtube.com")) ? (
+                    <iframe 
+                      src={marketData.embed_poster as string}
+                      allowFullScreen 
+                      scrolling="no"
+                      frameBorder="0"
+                      style={{ width: "100%", height: "650px", border: "none", overflow: "hidden" }}
+                      title="Event Poster Embed"
+                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                    />
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={marketData.embed_poster as string} alt="Event Poster" loading="lazy" style={{ width: "100%", maxHeight: "800px", objectFit: "contain" }} />
+                  )}
+                </div>
+              )}
 
-              {/* Buffalo cards */}
-              <div className="detail-buffalos-grid">
+            </div>
+
+            {/* Right: Staking Interface */}
+            <div className="detail-staking-sidebar">
+
+              {/* Buffalo cards Side-by-Side Grid */}
+              <div style={{ position: "relative", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.5rem" }}>
                 <BuffaloCard
                   side="A" 
                   name={marketData.buffalo_a_name as string} 
@@ -284,26 +294,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   onSelect={() => setSelectedBuffalo("A")}
                 />
                 
-                {/* VS divider — desktop */}
-                <div className="desktop-nav-only" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div style={{
-                    width: "40px", height: "40px", borderRadius: "50%",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "rgba(255,255,255,0.03)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#475569", fontWeight: 900, fontSize: "12px", letterSpacing: "0.05em",
-                  }}>VS</div>
-                </div>
-                
-                {/* VS divider — mobile */}
-                <div className="mobile-nav-only" style={{ textAlign: "center", padding: "0.25rem 0" }}>
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    width: "32px", height: "32px", borderRadius: "50%",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "rgba(255,255,255,0.03)",
-                    color: "#475569", fontWeight: 900, fontSize: "11px",
-                  }}>VS</span>
+                {/* Custom VS Image */}
+                <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 10, width: "64px", height: "64px", pointerEvents: "none" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/vs.png" alt="VS" style={{ width: "100%", height: "100%", objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))" }} />
                 </div>
                 
                 <BuffaloCard
@@ -317,10 +311,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   onSelect={() => setSelectedBuffalo("B")}
                 />
               </div>
-            </div>
-
-            {/* Right: Staking Interface */}
-            <div className="detail-staking-sidebar">
 
               {/* Main panel */}
               <div style={{
