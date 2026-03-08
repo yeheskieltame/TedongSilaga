@@ -25,6 +25,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Insert Buffaloes to database if they don't exist yet
+    const ensureBuffaloExists = async (name: string) => {
+      const { data } = await supabase.from("buffalo").select("id").ilike("buffalo_name", name).maybeSingle();
+      if (!data) {
+        await supabase.from("buffalo").insert([{ buffalo_name: name }]);
+      }
+    };
+
+    await ensureBuffaloExists(buffalo_a_name);
+    await ensureBuffaloExists(buffalo_b_name);
+
     // Insert data ke tabel 'markets' di Supabase
     const { data, error } = await supabase
       .from("markets")

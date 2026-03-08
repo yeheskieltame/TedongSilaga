@@ -8,6 +8,7 @@ import { MARKET_FACTORY_ADDRESS, MARKET_FACTORY_ABI } from "@/constants/contract
 import { ArrowLeft, UploadCloud, Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export default function CreateMarketPage() {
   const { address } = useAccount();
@@ -25,9 +26,19 @@ export default function CreateMarketPage() {
     embed_poster: "",
     buffalo_a_name: "",
     url_embed_buffalo_a: "",
-    buffalo_b_name: "",
+     buffalo_b_name: "",
     url_embed_buffalo_b: "",
   });
+
+  const [buffalos, setBuffalos] = useState<{ buffalo_name: string }[]>([]);
+
+  React.useEffect(() => {
+    async function fetchBuffalos() {
+      const { data } = await supabase.from("buffalo").select("buffalo_name");
+      if (data) setBuffalos(data);
+    }
+    fetchBuffalos();
+  }, []);
 
   const [isLoading, setIsLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
@@ -177,12 +188,11 @@ export default function CreateMarketPage() {
 
           {/* Section 2: Buffalo Details */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-            
             {/* Buffalo A */}
             <div style={{ background: "rgba(34,197,94,0.03)", border: "1px solid rgba(34,197,94,0.1)", padding: "2rem", borderRadius: "20px" }}>
               <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#4ADE80", marginBottom: "1.5rem" }}>Buffalo A (Choice 1)</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                <InputGroup label="Buffalo A Name" name="buffalo_a_name" value={formData.buffalo_a_name} onChange={handleChange} required />
+                <InputGroup label="Buffalo A Name" name="buffalo_a_name" value={formData.buffalo_a_name} onChange={handleChange} required list="buffalo-list" />
                 <InputGroup label="URL Embed Kertas Kuning / Stats" name="url_embed_buffalo_a" value={formData.url_embed_buffalo_a} onChange={handleChange} />
               </div>
             </div>
@@ -191,10 +201,17 @@ export default function CreateMarketPage() {
             <div style={{ background: "rgba(239,68,68,0.03)", border: "1px solid rgba(239,68,68,0.1)", padding: "2rem", borderRadius: "20px" }}>
               <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#F87171", marginBottom: "1.5rem" }}>Buffalo B (Choice 2)</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                <InputGroup label="Buffalo B Name" name="buffalo_b_name" value={formData.buffalo_b_name} onChange={handleChange} required />
+                <InputGroup label="Buffalo B Name" name="buffalo_b_name" value={formData.buffalo_b_name} onChange={handleChange} required list="buffalo-list" />
                 <InputGroup label="URL Embed Kertas Kuning / Stats" name="url_embed_buffalo_b" value={formData.url_embed_buffalo_b} onChange={handleChange} />
               </div>
             </div>
+
+            {/* Global Datalist for Buffalos */}
+            <datalist id="buffalo-list">
+              {buffalos.map((b, idx) => (
+                <option key={idx} value={b.buffalo_name} />
+              ))}
+            </datalist>
 
           </div>
 
@@ -225,9 +242,10 @@ interface InputGroupProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
+  list?: string;
 }
 
-function InputGroup({ label, name, value, onChange, required = false }: InputGroupProps) {
+function InputGroup({ label, name, value, onChange, required = false, list }: InputGroupProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
       <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#94A3B8" }}>
@@ -239,6 +257,7 @@ function InputGroup({ label, name, value, onChange, required = false }: InputGro
         value={value}
         onChange={onChange}
         required={required}
+        list={list}
         style={{
           padding: "0.85rem 1rem",
           background: "rgba(0,0,0,0.2)",

@@ -82,8 +82,12 @@ export async function GET() {
       synced: syncedCount, 
       total: deployedMarkets.length 
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Sync API Error:", error);
-    return NextResponse.json({ error: "Sync failed", details: error.message }, { status: 500 });
+    let msg = "Sync failed";
+    if (error instanceof Error) {
+      msg = error.message;
+    }
+    return NextResponse.json({ error: "Sync failed", details: msg }, { status: 500 });
   }
 }

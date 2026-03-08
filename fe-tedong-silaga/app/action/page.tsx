@@ -82,9 +82,13 @@ export default function ActionPage() {
         closeModal();
       }, 2000);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setTxMessage({ type: "error", text: err.message || "Action failed." });
+      if (err instanceof Error) {
+        setTxMessage({ type: "error", text: err.message || "Action failed." });
+      } else {
+        setTxMessage({ type: "error", text: "Action failed." });
+      }
     } finally {
       setIsSubmitting(false);
     }
