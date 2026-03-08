@@ -1,18 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import { Search, SlidersHorizontal, ChevronDown, TrendingUp, Users, Zap, ChevronRight } from "lucide-react";
-
-const ALL_MATCHES = [
-  { id: "1",  nameA: "Rambu Solon",    nameB: "Tanduk Biru",   owner_a: "Datu Polopadang", owner_b: "Ne' Linggi",    loc: "Bori Arena",        pool: "2,400 WLD",  players: 34, winRateA: 80, record_a: "8W-2L", record_b: "6W-3L",  status: "Open"     as const },
-  { id: "4",  nameA: "Putra Alam",     nameB: "Sakti Toraja",  owner_a: "Layuk Allo",      owner_b: "Sanda Pitu",    loc: "Marante Stadium",   pool: "850 USDC",   players: 31, winRateA: 60, record_a: "6W-4L", record_b: "9W-2L",  status: "Open"     as const },
-  { id: "5",  nameA: "Mega Watt",      nameB: "Silaga Prime",  owner_a: "Randa Bua",       owner_b: "Tato Dena",     loc: "Sesean Arena",      pool: "1,200 WLD",  players: 18, winRateA: 55, record_a: "5W-4L", record_b: "7W-3L",  status: "Open"     as const },
-  { id: "2",  nameA: "Gorila Sakti",   nameB: "Byson Mas",     owner_a: "Ambe Rante",      owner_b: "Yusuf To",      loc: "Lemo Arena",        pool: "—",          players: 12, winRateA: 70, record_a: "7W-3L", record_b: "5W-5L",  status: "Locked"   as const },
-  { id: "3",  nameA: "Kerbau Silaga",  nameB: "Toraja King",   owner_a: "Pong Tiku",       owner_b: "Layuk Rante",   loc: "Kete Kesu Arena",   pool: "1,200 WLD",  players: 8,  winRateA: 62, record_a: "8W-5L", record_b: "11W-2L", status: "Resolved" as const },
-  { id: "6",  nameA: "Tanduk Mas",     nameB: "Putra Langit",  owner_a: "Ne' Bua",         owner_b: "Rante Allo",    loc: "Pallawa Arena",     pool: "1,450 USDC", players: 45, winRateA: 58, record_a: "7W-5L", record_b: "9W-3L",  status: "Resolved" as const },
-];
+import { Search, SlidersHorizontal, ChevronDown, TrendingUp, Zap, ChevronRight, PlusCircle } from "lucide-react";
+import { useAccount, useReadContract } from "wagmi";
+import { formatUnits } from "viem";
+import { supabase } from "@/lib/supabase";
+import { TEDONG_MARKET_ABI } from "@/constants/tedong_market_abi";
 
 const STATUS_COLORS: Record<string, { dot: string; text: string; bg: string }> = {
   Open:     { dot: "#4ADE80", text: "#4ADE80", bg: "rgba(74,222,128,0.1)" },
@@ -20,20 +15,88 @@ const STATUS_COLORS: Record<string, { dot: string; text: string; bg: string }> =
   Resolved: { dot: "#94A3B8", text: "#94A3B8", bg: "rgba(148,163,184,0.1)" },
 };
 
-export default function MarketsPage() {
-  const [activeFilter, setActiveFilter] = useState<"All" | "Open" | "Locked" | "Resolved">("All");
-  const [search, setSearch] = useState("");
-
-  const filtered = ALL_MATCHES.filter(m => {
-    const matchesFilter = activeFilter === "All" || m.status === activeFilter;
-    const matchesSearch = search === "" ||
-      m.nameA.toLowerCase().includes(search.toLowerCase()) ||
-      m.nameB.toLowerCase().includes(search.toLowerCase()) ||
-      m.loc.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
+// Sub-component to fetch and render dynamic market state
+function MarketDynamicData({ marketAddress }: { marketAddress: string }) {
+  const { data: totalPoolData } = useReadContract({
+    address: marketAddress as `0x${string}`,
+    abi: TEDONG_MARKET_ABI,
+    functionName: "getTotalPool",
+  });
+  
+  const { data: statusData } = useReadContract({
+    address: marketAddress as `0x${string}`,
+    abi: TEDONG_MARKET_ABI,
+    functionName: "status",
   });
 
-  const openCount = ALL_MATCHES.filter(m => m.status === "Open").length;
+  const pool = totalPoolData ? `${parseFloat(formatUnits(totalPoolData as bigint, 6)).toLocaleString()} USDC` : "0 USDC";
+  
+  // Status mapping: 0 = Open, 1 = Locked, 2 = Resolved
+  let statusText = "Open";
+  if (statusData === 1) statusText = "Locked";
+  if (statusData === 2) statusText = "Resolved";
+  
+  const sc = STATUS_COLORS[statusText] || STATUS_COLORS["Open"];
+
+  return (
+    <>
+      <div className="dynamic-pool" style={{ fontWeight: 800, fontSize: "14px", color: "#EAB308" }}>{pool}</div>
+      <div className="dynamic-status">
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: "5px",
+          padding: "3px 10px", borderRadius: "999px",
+          background: sc.bg, fontSize: "11px", fontWeight: 700,
+          textTransform: "uppercase", letterSpacing: "0.08em", color: sc.text,
+        }}>
+          <span style={{
+            width: "6px", height: "6px", borderRadius: "50%",
+            display: "inline-block", background: sc.dot,
+            animation: statusText === "Open" ? "pulse 2s infinite" : "none"
+          }} />
+          {statusText}
+        </span>
+      </div>
+    </>
+  );
+}
+
+
+export default function MarketsPage() {
+  const { address } = useAccount();
+  const isAdmin = address?.toLowerCase() === "0x7c1f9bcdea7c160e4763d6da06399a7d363a9e22";
+
+  const [markets, setMarkets] = useState<Record<string, unknown>[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    async function fetchMarkets() {
+      try {
+        const { data, error } = await supabase
+          .from("markets")
+          .select("*")
+          .order("created_at", { ascending: false });
+        
+        if (error) throw error;
+        setMarkets(data || []);
+      } catch (e) {
+        console.error("Failed to fetch markets", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchMarkets();
+  }, []);
+
+  // For now, filtering only by search text since status is dynamic in contract
+  const filtered = markets.filter(m => {
+    const marketObj = m as Record<string, string>;
+    const matchesSearch = search === "" ||
+      (marketObj.buffalo_a_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
+      (marketObj.buffalo_b_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
+      (marketObj.arena_name?.toLowerCase() || "").includes(search.toLowerCase());
+    return matchesSearch;
+  });
 
   return (
     <div style={{ minHeight: "100vh", background: "#0B0F1A", color: "#E2E8F0" }}>
@@ -54,26 +117,46 @@ export default function MarketsPage() {
                 <p className="markets-subtitle">Live and upcoming buffalo prediction markets on World Chain.</p>
               </div>
 
-              {/* Top-right stat — desktop only */}
-              <div className="desktop-nav-only" style={{
-                padding: "0.6rem 1.2rem",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "999px",
-                background: "rgba(255,255,255,0.03)",
-                fontSize: "0.8rem", color: "#94A3B8",
-                display: "flex", alignItems: "center", gap: "8px"
-              }}>
-                <Zap size={14} color="#4F6BFF" />
-                Total Pool: <strong style={{ color: "#F8FAFC" }}>5,850 WLD + 2,300 USDC</strong>
+              {/* Top-right stat & Admin Actions — desktop only */}
+              <div className="desktop-nav-only" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                
+                {/* Admin Create Market Button */}
+                {isAdmin && (
+                  <Link href="/admin/create-market" style={{ textDecoration: "none" }}>
+                    <button style={{
+                      padding: "0.6rem 1.2rem",
+                      borderRadius: "999px",
+                      background: "linear-gradient(135deg, #4F6BFF, #6366F1)",
+                      border: "1px solid rgba(79,107,255,0.4)",
+                      fontSize: "0.8rem", color: "#FFF", fontWeight: 700,
+                      display: "flex", alignItems: "center", gap: "8px",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 12px rgba(79,107,255,0.3)"
+                    }}>
+                      <PlusCircle size={16} />
+                      Create Market
+                    </button>
+                  </Link>
+                )}
+
+                <div style={{
+                  padding: "0.6rem 1.2rem",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "999px",
+                  background: "rgba(255,255,255,0.03)",
+                  fontSize: "0.8rem", color: "#94A3B8",
+                  display: "flex", alignItems: "center", gap: "8px"
+                }}>
+                  <Zap size={14} color="#4F6BFF" />
+                  Markets: <strong style={{ color: "#F8FAFC" }}>{markets.length} Deployed</strong>
+                </div>
               </div>
             </div>
 
-            {/* Stats row */}
-            <div className="markets-stats-row">
+            {/* Stats row - Removed Players and Resolved Today as requested */}
+            <div className="markets-stats-row" style={{ paddingBottom: "1.5rem" }}>
               {[
-                { label: "Open Markets",    value: `${openCount} Active`,  icon: <TrendingUp size={12} style={{ color: "#4ADE80" }} /> },
-                { label: "Total Players",   value: "148",                  icon: <Users size={12} style={{ color: "#4F6BFF" }} /> },
-                { label: "Resolved Today",  value: "2 Matches",            icon: <Zap size={12} style={{ color: "#EAB308" }} /> },
+                { label: "Active Markets",    value: `${markets.length} Markets`,  icon: <TrendingUp size={12} style={{ color: "#4ADE80" }} /> },
               ].map((s, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                   <span style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
@@ -94,23 +177,18 @@ export default function MarketsPage() {
             {/* Filter pills */}
             <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
               <SlidersHorizontal size={14} style={{ color: "#475569", marginRight: "2px" }} />
-              {(["All", "Open", "Locked", "Resolved"] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setActiveFilter(f)}
-                  style={{
-                    padding: "4px 12px",
-                    borderRadius: "999px",
-                    border: activeFilter === f ? "1px solid rgba(79,107,255,0.5)" : "1px solid rgba(255,255,255,0.08)",
-                    background: activeFilter === f ? "rgba(79,107,255,0.12)" : "rgba(255,255,255,0.03)",
-                    color: activeFilter === f ? "#818CF8" : "#64748B",
-                    fontWeight: 700, fontSize: "12px", cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {f}
-                </button>
-              ))}
+              <button
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: "999px",
+                  border: "1px solid rgba(79,107,255,0.5)",
+                  background: "rgba(79,107,255,0.12)",
+                  color: "#818CF8",
+                  fontWeight: 700, fontSize: "12px", cursor: "pointer",
+                }}
+              >
+                All Markets
+              </button>
             </div>
 
             {/* Search */}
@@ -120,7 +198,7 @@ export default function MarketsPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 type="text"
-                placeholder="Search..."
+                placeholder="Search buffalo..."
                 style={{
                   paddingLeft: "32px", paddingRight: "12px", paddingTop: "6px", paddingBottom: "6px",
                   background: "rgba(255,255,255,0.03)",
@@ -142,12 +220,13 @@ export default function MarketsPage() {
             {/* Table Head */}
             <div style={{
               display: "grid",
-              gridTemplateColumns: "2fr 2fr 1.2fr 1.2fr 1fr 1fr 1fr",
+              // Adjusted grid columns since we removed Players and Winrate
+              gridTemplateColumns: "2.5fr 2.5fr 1.5fr 1.5fr 1fr",
               padding: "0.85rem 1.5rem",
               borderBottom: "1px solid rgba(255,255,255,0.06)",
               background: "rgba(255,255,255,0.02)",
             }}>
-              {["Buffalo A", "Buffalo B", "Arena", "Prize Pool", "Players", "Win Rate A", "Status"].map((col, i) => (
+              {["Buffalo A", "Buffalo B", "Arena", "Prize Pool", "Status"].map((col, i) => (
                 <div key={i} style={{
                   fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em",
                   color: "#475569", display: "flex", alignItems: "center", gap: "4px"
@@ -158,18 +237,23 @@ export default function MarketsPage() {
             </div>
 
             {/* Table Rows */}
-            {filtered.length === 0 ? (
+            {loading ? (
+               <div style={{ padding: "5rem", textAlign: "center", color: "#475569", fontWeight: 600 }}>
+                 Loading markets from blockchain...
+               </div>
+            ) : filtered.length === 0 ? (
               <div style={{ padding: "5rem", textAlign: "center", color: "#475569" }}>
-                No matches found.
+                No markets found matching your search.
               </div>
-            ) : filtered.map((m, idx) => {
-              const sc = STATUS_COLORS[m.status];
+            ) : filtered.map((mObj, idx) => {
+              const m = mObj as Record<string, string>;
               return (
-                <Link key={m.id} href={`/markets/${m.id}`} style={{ textDecoration: "none" }}>
+                <Link key={m.market_address} href={`/markets/${m.market_address}`} style={{ textDecoration: "none" }}>
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "2fr 2fr 1.2fr 1.2fr 1fr 1fr 1fr",
+                      // Matching grid template
+                      gridTemplateColumns: "2.5fr 2.5fr 1.5fr 1.5fr 1fr",
                       padding: "1.1rem 1.5rem",
                       borderBottom: idx < filtered.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
                       alignItems: "center",
@@ -188,8 +272,7 @@ export default function MarketsPage() {
                         display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px",
                       }}>🐃</div>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: "14px", color: "#F1F5F9" }}>{m.nameA}</div>
-                        <div style={{ fontSize: "11px", color: "#475569" }}>{m.owner_a}</div>
+                        <div style={{ fontWeight: 700, fontSize: "14px", color: "#F1F5F9" }}>{m.buffalo_a_name}</div>
                       </div>
                     </div>
                     {/* Buffalo B */}
@@ -201,45 +284,15 @@ export default function MarketsPage() {
                         display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px",
                       }}>🐃</div>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: "14px", color: "#F1F5F9" }}>{m.nameB}</div>
-                        <div style={{ fontSize: "11px", color: "#475569" }}>{m.owner_b}</div>
+                        <div style={{ fontWeight: 700, fontSize: "14px", color: "#F1F5F9" }}>{m.buffalo_b_name}</div>
                       </div>
                     </div>
                     {/* Arena */}
-                    <div style={{ fontSize: "13px", color: "#94A3B8" }}>{m.loc}</div>
-                    {/* Prize Pool */}
-                    <div><div style={{ fontWeight: 800, fontSize: "14px", color: "#EAB308" }}>{m.pool}</div></div>
-                    {/* Players */}
-                    <div style={{ fontSize: "13px", color: "#94A3B8", display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Users size={13} style={{ color: "#475569" }} /> {m.players}
-                    </div>
-                    {/* Win Rate A */}
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <div style={{ height: "4px", width: "64px", background: "rgba(255,255,255,0.08)", borderRadius: "2px", overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${m.winRateA}%`, background: m.winRateA >= 70 ? "#4ADE80" : m.winRateA >= 55 ? "#EAB308" : "#F87171", borderRadius: "2px" }} />
-                        </div>
-                        <span style={{ fontSize: "12px", fontWeight: 700, color: m.winRateA >= 70 ? "#4ADE80" : m.winRateA >= 55 ? "#EAB308" : "#F87171" }}>
-                          {m.winRateA}%
-                        </span>
-                      </div>
-                    </div>
-                    {/* Status */}
-                    <div>
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: "5px",
-                        padding: "3px 10px", borderRadius: "999px",
-                        background: sc.bg, fontSize: "11px", fontWeight: 700,
-                        textTransform: "uppercase", letterSpacing: "0.08em", color: sc.text,
-                      }}>
-                        <span style={{
-                          width: "6px", height: "6px", borderRadius: "50%",
-                          display: "inline-block", background: sc.dot,
-                          animation: m.status === "Open" ? "pulse 2s infinite" : "none"
-                        }} />
-                        {m.status}
-                      </span>
-                    </div>
+                    <div style={{ fontSize: "13px", color: "#94A3B8" }}>{m.arena_name}</div>
+                    
+                    {/* Dynamic Pool & Status from Subcomponent */}
+                    <MarketDynamicData marketAddress={m.market_address} />
+
                   </div>
                 </Link>
               );
@@ -252,10 +305,10 @@ export default function MarketsPage() {
               <div style={{ padding: "3rem", textAlign: "center", color: "#475569", fontSize: "0.85rem" }}>
                 No matches found.
               </div>
-            ) : filtered.map((m) => {
-              const sc = STATUS_COLORS[m.status];
+            ) : filtered.map((mObj) => {
+              const m = mObj as Record<string, string>;
               return (
-                <Link key={m.id} href={`/markets/${m.id}`} style={{ textDecoration: "none" }}>
+                <Link key={m.market_address} href={`/markets/${m.market_address}`} style={{ textDecoration: "none" }}>
                   <div style={{
                     padding: "1rem",
                     borderRadius: "14px",
@@ -265,16 +318,7 @@ export default function MarketsPage() {
                   }}>
                     {/* Top row: Status + Pool */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: "4px",
-                        padding: "2px 8px", borderRadius: "999px",
-                        background: sc.bg, fontSize: "10px", fontWeight: 700,
-                        textTransform: "uppercase", letterSpacing: "0.06em", color: sc.text,
-                      }}>
-                        <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: sc.dot, display: "inline-block" }} />
-                        {m.status}
-                      </span>
-                      <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#EAB308" }}>{m.pool}</span>
+                      <MarketDynamicData marketAddress={m.market_address} />
                     </div>
 
                     {/* VS Row */}
@@ -288,7 +332,7 @@ export default function MarketsPage() {
                           display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px",
                         }}>🐃</div>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "#F1F5F9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.nameA}</div>
+                          <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "#F1F5F9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.buffalo_a_name}</div>
                         </div>
                       </div>
 
@@ -298,7 +342,7 @@ export default function MarketsPage() {
                       {/* Buffalo B */}
                       <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "8px", justifyContent: "flex-end", minWidth: 0 }}>
                         <div style={{ minWidth: 0, textAlign: "right" }}>
-                          <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "#F1F5F9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.nameB}</div>
+                          <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "#F1F5F9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.buffalo_b_name}</div>
                         </div>
                         <div style={{
                           width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
@@ -309,13 +353,10 @@ export default function MarketsPage() {
                       </div>
                     </div>
 
-                    {/* Bottom row: arena, players, chevron */}
+                    {/* Bottom row: arena, chevron */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.6rem", paddingTop: "0.6rem", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                      <span style={{ fontSize: "0.7rem", color: "#64748B" }}>{m.loc}</span>
+                      <span style={{ fontSize: "0.7rem", color: "#64748B" }}>{m.arena_name}</span>
                       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <span style={{ fontSize: "0.7rem", color: "#64748B", display: "flex", alignItems: "center", gap: "3px" }}>
-                          <Users size={11} color="#475569" /> {m.players}
-                        </span>
                         <ChevronRight size={14} color="#475569" />
                       </div>
                     </div>
@@ -326,7 +367,7 @@ export default function MarketsPage() {
           </div>
 
           <p style={{ textAlign: "center", marginTop: "1.25rem", fontSize: "11px", color: "#334155" }}>
-            Showing {filtered.length} of {ALL_MATCHES.length} markets · Powered by World Chain
+            Showing {filtered.length} markets
           </p>
         </div>
       </main>

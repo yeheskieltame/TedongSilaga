@@ -1,17 +1,42 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion, useTransform, MotionValue } from "framer-motion";
 import { ArrowRight, MapPin } from "lucide-react";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+import { useReadContract } from "wagmi";
+import { TEDONG_MARKET_ABI } from "@/constants/tedong_market_abi";
+import { formatUnits } from "viem";
 
-const MATCHES = [
-  { id: 1, a: "Tanduk Biru", b: "Sakti Toraja", loc: "Bori Arena", pool: "2,400 WLD", status: "Open" },
-  { id: 2, a: "Rambu Soli", b: "Putra Alam", loc: "Marante Stadium", pool: "1,200 USDC", status: "Locked" },
-  { id: 3, a: "Gorila Sakti", b: "Tanduk Mas", loc: "Kete Kesu Arena", pool: "850 WLD", status: "Open" },
-  { id: 4, a: "Byson Gila", b: "Raja Langit", loc: "Sesean Arena", pool: "3,100 WLD", status: "Resolved" },
-];
+const STATUS_COLORS: Record<string, { dot: string; text: string; bg: string }> = {
+  Open:     { dot: "#4ADE80", text: "#4ADE80", bg: "rgba(74,222,128,0.1)" },
+  Locked:   { dot: "#FBBF24", text: "#FBBF24", bg: "rgba(251,191,36,0.1)" },
+  Resolved: { dot: "#94A3B8", text: "#94A3B8", bg: "rgba(148,163,184,0.1)" },
+};
 
-const MatchCard = ({ match }: { match: typeof MATCHES[0] }) => {
+const CarouselMatchCard = ({ match }: { match: Record<string, unknown> }) => {
+  const marketAddress = match.market_address as string;
+  const { data: totalPoolData } = useReadContract({
+    address: marketAddress as `0x${string}`,
+    abi: TEDONG_MARKET_ABI,
+    functionName: "getTotalPool",
+  });
+  
+  const { data: statusData } = useReadContract({
+    address: marketAddress as `0x${string}`,
+    abi: TEDONG_MARKET_ABI,
+    functionName: "status",
+  });
+
+  const pool = totalPoolData ? `${parseFloat(formatUnits(totalPoolData as bigint, 6)).toLocaleString()} USDC` : "0 USDC";
+  
+  let statusText = "Open";
+  if (statusData === 1) statusText = "Locked";
+  if (statusData === 2) statusText = "Resolved";
+  
+  const sc = STATUS_COLORS[statusText] || STATUS_COLORS["Open"];
+
   return (
     <motion.div
       whileHover={{ y: -8, borderColor: "rgba(79,107,255,0.4)", background: "rgba(255,255,255,0.04)" }}
@@ -25,77 +50,114 @@ const MatchCard = ({ match }: { match: typeof MATCHES[0] }) => {
         cursor: "pointer",
         transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
         backdropFilter: "blur(24px)",
+        minWidth: "280px",
+        height: "100%",
+        padding: "0" // Padding handled internally to stretch link
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-        <span style={{
-          fontSize: "9px", fontWeight: 800, letterSpacing: "0.1em",
-          color: match.status === "Open" ? "#4ADE80" : "#94A3B8",
-          background: match.status === "Open" ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.05)",
-          padding: "3px 10px", borderRadius: "99px", textTransform: "uppercase",
-          border: `1px solid ${match.status === "Open" ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.1)"}`
-        }}>
-          {match.status}
-        </span>
-        <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#EAB308", letterSpacing: "0.02em" }}>
-          {match.pool}
-        </span>
-      </div>
-
-      <div style={{ 
-        display: "flex", 
-        alignItems: "center", 
-        justifyContent: "center", 
-        padding: "0.75rem 0",
-        background: "rgba(255,255,255,0.02)",
-        borderRadius: "16px",
-        border: "1px solid rgba(255,255,255,0.03)"
-      }}>
-        <div style={{ textAlign: "center", flex: 1 }}>
-          <div className="match-card-emoji">🐃</div>
-          <div className="match-card-name">{match.a}</div>
+      <Link href={`/markets/${marketAddress}`} style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", height: "100%", padding: "1.25rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+          <span style={{
+            fontSize: "9px", fontWeight: 800, letterSpacing: "0.1em",
+            color: sc.text,
+            background: sc.bg,
+            padding: "3px 10px", borderRadius: "99px", textTransform: "uppercase",
+            border: `1px solid ${sc.bg}`,
+            display: "flex", alignItems: "center", gap: "5px"
+          }}>
+            <span style={{
+              width: "6px", height: "6px", borderRadius: "50%",
+              display: "inline-block", background: sc.dot,
+              animation: statusText === "Open" ? "pulse 2s infinite" : "none"
+            }} />
+            {statusText}
+          </span>
+          <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#EAB308", letterSpacing: "0.02em" }}>
+            {pool}
+          </span>
         </div>
-        
+
         <div style={{ 
-          fontSize: "0.65rem", 
-          fontWeight: 900, 
-          color: "#475569", 
-          background: "rgba(255,255,255,0.05)",
-          padding: "4px 6px",
-          borderRadius: "6px",
-          margin: "0 0.3rem",
-          letterSpacing: "0.05em"
-        }}>VS</div>
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center", 
+          padding: "0.75rem 0",
+          background: "rgba(255,255,255,0.02)",
+          borderRadius: "16px",
+          border: "1px solid rgba(255,255,255,0.03)",
+          marginTop: "0.5rem"
+        }}>
+          <div style={{ textAlign: "center", flex: 1, padding: "0 0.25rem" }}>
+            <div className="match-card-emoji">🐃</div>
+            <div className="match-card-name" style={{ fontSize: "0.8rem", fontWeight: 700, color: "#F1F5F9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{match.buffalo_a_name as string}</div>
+          </div>
+          
+          <div style={{ 
+            fontSize: "0.65rem", 
+            fontWeight: 900, 
+            color: "#475569", 
+            background: "rgba(255,255,255,0.05)",
+            padding: "4px 6px",
+            borderRadius: "6px",
+            margin: "0 0.3rem",
+            letterSpacing: "0.05em"
+          }}>VS</div>
 
-        <div style={{ textAlign: "center", flex: 1 }}>
-          <div className="match-card-emoji">🐃</div>
-          <div className="match-card-name">{match.b}</div>
+          <div style={{ textAlign: "center", flex: 1, padding: "0 0.25rem" }}>
+            <div className="match-card-emoji">🐃</div>
+            <div className="match-card-name" style={{ fontSize: "0.8rem", fontWeight: 700, color: "#F1F5F9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{match.buffalo_b_name as string}</div>
+          </div>
         </div>
-      </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#64748B", fontSize: "0.75rem", fontWeight: 500, marginTop: "0.5rem" }}>
-        <MapPin size={12} /> {match.loc}
-      </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#64748B", fontSize: "0.75rem", fontWeight: 500, margin: "1rem 0" }}>
+          <MapPin size={12} /> {match.arena_name as string}
+        </div>
 
-      <button className="match-card-btn" style={{
-        width: "100%",
-        borderRadius: "12px",
-        background: match.status === "Open" ? "linear-gradient(135deg, #4F6BFF, #6366F1)" : "rgba(255,255,255,0.05)",
-        border: "none", color: match.status === "Open" ? "#fff" : "#475569", fontWeight: 700,
-        display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-        cursor: match.status === "Open" ? "pointer" : "default",
-        fontSize: "0.8rem",
-        boxShadow: match.status === "Open" ? "0 4px 20px rgba(79,107,255,0.25)" : "none",
-        transition: "all 0.2s ease",
-        marginTop: "0.75rem",
-      }}>
-        Predict Now <ArrowRight size={14} />
-      </button>
+        <div style={{ marginTop: "auto" }}>
+          <button style={{
+            width: "100%",
+            padding: "0.8rem",
+            borderRadius: "12px",
+            background: statusText === "Open" ? "linear-gradient(135deg, #4F6BFF, #6366F1)" : "rgba(255,255,255,0.05)",
+            border: "none", color: statusText === "Open" ? "#fff" : "#475569", fontWeight: 700,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+            cursor: "pointer",
+            fontSize: "0.8rem",
+            boxShadow: statusText === "Open" ? "0 4px 20px rgba(79,107,255,0.25)" : "none",
+            transition: "all 0.3s ease",
+          }}>
+            {statusText === "Open" ? "Predict Now" : "View Details"} <ArrowRight size={14} />
+          </button>
+        </div>
+      </Link>
     </motion.div>
   );
 };
 
 export default function MatchCarousel({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) {
+  const [markets, setMarkets] = useState<Record<string, unknown>[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchMatches() {
+      try {
+        const { data, error } = await supabase
+          .from("markets")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(6); // Show up to 6 recent markets in the carousel
+        
+        if (error) throw error;
+        setMarkets((data as Record<string, unknown>[]) || []);
+      } catch (err) {
+        console.error("Failed to load carousel markets:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchMatches();
+  }, []);
+
   const opacity = useTransform(scrollYProgress, [0.86, 0.93], [0, 1]);
   const y = useTransform(scrollYProgress, [0.86, 0.93], [50, 0]);
   const scale = useTransform(scrollYProgress, [0.86, 0.93], [0.97, 1]);
@@ -116,19 +178,22 @@ export default function MatchCarousel({ scrollYProgress }: { scrollYProgress: Mo
         pointerEvents,
         position: "relative",
         zIndex: 40,
+        paddingLeft: "2rem", // Give some offset on large screens
+        maxWidth: "1100px",
+        margin: "0 auto",
       }}
       className="match-carousel-section"
     >
       {/* Header */}
-      <div style={{ marginBottom: "1.25rem" }}>
+      <div style={{ marginBottom: "1.25rem", paddingRight: "2rem" }}>
         <p style={{
           fontSize: "10px", fontWeight: 700, letterSpacing: "0.2em",
           color: "#4F6BFF", textTransform: "uppercase", marginBottom: "0.4rem"
         }}>Live Predictions</p>
-        <h2 className="match-carousel-title">
+        <h2 className="match-carousel-title" style={{ fontSize: "2.5rem", fontWeight: 900, color: "#fff", marginBottom: "0.5rem", letterSpacing: "-0.02em" }}>
           Live <span style={{ color: "#4F6BFF" }}>Arena.</span>
         </h2>
-        <p className="match-carousel-desc">
+        <p className="match-carousel-desc" style={{ color: "#94A3B8", maxWidth: "450px", lineHeight: "1.5" }}>
           Current buffalo prediction markets synchronized from the Highlands to the World Chain.
         </p>
       </div>
@@ -136,13 +201,21 @@ export default function MatchCarousel({ scrollYProgress }: { scrollYProgress: Mo
       {/* Scrollable card row */}
       <div style={{
         display: "flex",
-        gap: "1rem",
+        gap: "1.25rem",
         overflowX: "auto",
-        padding: "0.25rem 0 1rem 0",
+        padding: "1rem 2rem 2rem 0",
         scrollbarWidth: "none",
         msOverflowStyle: "none"
       }} className="no-scrollbar">
-        {MATCHES.map((m) => <MatchCard key={m.id} match={m} />)}
+        {loading ? (
+          <div style={{ padding: "2rem", color: "#64748B", fontWeight: 600 }}>Syncing live arenas...</div>
+        ) : markets.length === 0 ? (
+          <div style={{ padding: "2rem", color: "#64748B", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "16px", flex: 1, maxWidth: "400px" }}>
+            No live markets available right now. Wait for admin to deploy new markets.
+          </div>
+        ) : (
+          markets.map((m) => <CarouselMatchCard key={m.market_address as string} match={m} />)
+        )}
       </div>
     </motion.section>
   );

@@ -1,21 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
-import { Trophy, Flame, Search, ShieldCheck, TrendingUp, Users, Star, Crown } from "lucide-react";
-
-const LEADERBOARD_DATA = [
-  { rank: 1, name: "0xAB..5678", winRate: 92, reward: "+12,240 WLD",  matches: 48, streak: 8,  verified: true  },
-  { rank: 2, name: "0xDE..9012", winRate: 87, reward: "+9,980 WLD",   matches: 41, streak: 5,  verified: true  },
-  { rank: 3, name: "0x7F..3456", winRate: 85, reward: "+8,870 WLD",   matches: 39, streak: 4,  verified: true  },
-  { rank: 4, name: "0x98..1122", winRate: 82, reward: "+7,210 USDC",  matches: 35, streak: 3,  verified: true  },
-  { rank: 5, name: "0x44..3344", winRate: 80, reward: "+6,650 WLD",   matches: 33, streak: 2,  verified: true  },
-  { rank: 6, name: "0xDE..5566", winRate: 78, reward: "+5,420 WLD",   matches: 30, streak: 0,  verified: false },
-  { rank: 7, name: "0x11..7788", winRate: 76, reward: "+4,910 USDC",  matches: 28, streak: 1,  verified: true  },
-  { rank: 8, name: "0x90..9900", winRate: 75, reward: "+4,240 WLD",   matches: 25, streak: 2,  verified: true  },
-  { rank: 9, name: "0xCC..2233", winRate: 73, reward: "+3,820 WLD",   matches: 22, streak: 0,  verified: true  },
-  { rank: 10, name: "0xBB..4455", winRate: 71, reward: "+3,100 WLD",  matches: 20, streak: 1,  verified: false },
-];
+import { Search, ShieldCheck, Users, TrendingUp, Crown } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useAccount } from "wagmi";
 
 const RANK_MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 const RANK_COLOR: Record<number, string> = { 1: "#EAB308", 2: "#94A3B8", 3: "#CD7F32" };
@@ -26,19 +15,82 @@ const PODIUM_BG: Record<number, string> = {
   3: "linear-gradient(180deg, rgba(205,127,50,0.2) 0%, rgba(205,127,50,0.05) 100%)",
 };
 
-export default function LeaderboardPage() {
-  const [activeTab, setActiveTab] = useState<"Season" | "Monthly" | "All-Time">("Season");
-  const [search, setSearch] = useState("");
+interface LeaderboardPlayer {
+  rank: number;
+  address: string;
+  name: string;
+  volume: number;
+  matches: number;
+  verified: boolean;
+}
 
-  const filtered = LEADERBOARD_DATA.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase())
+export default function LeaderboardPage() {
+  const { address } = useAccount();
+  const [activeTab, setActiveTab] = useState<"Season" | "Monthly" | "All-Time">("All-Time");
+  const [search, setSearch] = useState("");
+  
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardPlayer[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchLeaderboard() {
+      try {
+        const { data, error } = await supabase.from("predictions").select("user_address, amount");
+        if (error) throw error;
+
+        // Aggregate by user_address
+        const userStats: Record<string, { matches: number; volume: number }> = {};
+        
+        data.forEach(p => {
+          const addr = p.user_address.toLowerCase();
+          if (!userStats[addr]) {
+             userStats[addr] = { matches: 0, volume: 0 };
+          }
+          userStats[addr].matches += 1;
+          userStats[addr].volume += Number(p.amount);
+        });
+
+        // Convert to array and sort by volume
+        const sorted = Object.entries(userStats)
+          .map(([addr, stats]) => ({
+             address: addr,
+             ...stats
+          }))
+          .sort((a, b) => b.volume - a.volume)
+          .map((u, i) => ({
+             rank: i + 1,
+             address: u.address,
+             name: `${u.address.slice(0, 6)}...${u.address.slice(-4)}`,
+             volume: u.volume,
+             matches: u.matches,
+             verified: false // Placeholder for World ID status
+          }));
+
+        setLeaderboardData(sorted);
+      } catch (err) {
+        console.error("Error fetching leaderboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchLeaderboard();
+  }, []);
+
+  const filtered = leaderboardData.filter(p =>
+    p.address.toLowerCase().includes(search.toLowerCase()) || p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const top3 = LEADERBOARD_DATA.slice(0, 3);
-  const rest = filtered.filter(p => p.rank > 3);
+  const top3 = leaderboardData.slice(0, 3);
+  
+  // Reorder for podium display: 2nd, 1st, 3rd (if they exist)
+  const podiumOrder = [];
+  if (top3[1]) podiumOrder.push(top3[1]);
+  if (top3[0]) podiumOrder.push(top3[0]);
+  if (top3[2]) podiumOrder.push(top3[2]);
 
-  // Reorder for podium display: 2nd, 1st, 3rd
-  const podiumOrder = [top3[1], top3[0], top3[2]];
+  // Find current user stats
+  const currentUserStats = address ? leaderboardData.find(p => p.address === address.toLowerCase()) : null;
 
   return (
     <div style={{ minHeight: "100vh", background: "#0B0F1A", color: "#E2E8F0" }}>
@@ -60,9 +112,8 @@ export default function LeaderboardPage() {
           {/* Stats summary — desktop */}
           <div className="desktop-nav-only" style={{ display: "flex", justifyContent: "center", gap: "2.5rem", marginBottom: "1.5rem" }}>
             {[
-              { label: "Predictors", value: "12,420", icon: <Users size={13} style={{ color: "#4F6BFF" }} /> },
-              { label: "WLD Paid",   value: "58,740", icon: <TrendingUp size={13} style={{ color: "#4ADE80" }} /> },
-              { label: "Top Win %",  value: "92%",     icon: <Star size={13} style={{ color: "#EAB308" }} /> },
+              { label: "Predictors", value: leaderboardData.length.toLocaleString(), icon: <Users size={13} style={{ color: "#4F6BFF" }} /> },
+              { label: "Vol Staked", value: `${leaderboardData.reduce((acc, p) => acc + p.volume, 0).toLocaleString()} USDC`, icon: <TrendingUp size={13} style={{ color: "#4ADE80" }} /> },
             ].map((s, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <span style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
@@ -94,190 +145,199 @@ export default function LeaderboardPage() {
             ))}
           </div>
 
-          {/* ── Podium Top 3 ── */}
-          <div className="lb-podium">
-            {podiumOrder.map((player, idx) => {
-              const actualRank = player.rank;
-              const isFirst = actualRank === 1;
-              return (
-                <div key={actualRank} style={{
-                  display: "flex", flexDirection: "column", alignItems: "center",
-                  gap: "0.25rem",
-                  alignSelf: "flex-end",
-                }}>
-                  {/* Crown for #1 */}
-                  {isFirst && (
-                    <Crown size={24} color="#EAB308" fill="#EAB308" style={{ marginBottom: "0.25rem" }} />
-                  )}
+          {loading ? (
+             <div style={{ textAlign: "center", padding: "3rem", color: "#64748B" }}>Loading rankings...</div>
+          ) : leaderboardData.length === 0 ? (
+             <div style={{ textAlign: "center", padding: "3rem", color: "#64748B", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "14px", maxWidth: "400px", margin: "0 auto" }}>
+               No predictions have been made yet.<br/>Be the first to stake and top the leaderboard!
+             </div>
+          ) : (
+            <>
+              {/* ── Podium Top 3 ── */}
+              {podiumOrder.length > 0 && (
+                <div className="lb-podium">
+                  {podiumOrder.map((player) => {
+                    const actualRank = player.rank;
+                    const isFirst = actualRank === 1;
+                    return (
+                      <div key={actualRank} style={{
+                        display: "flex", flexDirection: "column", alignItems: "center",
+                        gap: "0.25rem",
+                        alignSelf: "flex-end",
+                      }}>
+                        {/* Crown for #1 */}
+                        {isFirst && (
+                          <Crown size={24} color="#EAB308" fill="#EAB308" style={{ marginBottom: "0.25rem" }} />
+                        )}
 
-                  {/* Avatar circle */}
-                  <div style={{
-                    width: isFirst ? "64px" : "52px",
-                    height: isFirst ? "64px" : "52px",
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, #1E293B, #0F172A)",
-                    border: `3px solid ${RANK_COLOR[actualRank]}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: isFirst ? "1.5rem" : "1.2rem",
-                    boxShadow: `0 0 20px ${RANK_COLOR[actualRank]}33`,
-                    position: "relative",
-                  }}>
-                    👤
-                  </div>
+                        {/* Avatar circle */}
+                        <div style={{
+                          width: isFirst ? "64px" : "52px",
+                          height: isFirst ? "64px" : "52px",
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg, #1E293B, #0F172A)",
+                          border: `3px solid ${RANK_COLOR[actualRank] || '#64748B'}`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: isFirst ? "1.5rem" : "1.2rem",
+                          boxShadow: `0 0 20px ${RANK_COLOR[actualRank] || '#64748B'}33`,
+                          position: "relative",
+                        }}>
+                          👤
+                        </div>
 
-                  {/* Name */}
-                  <span className="lb-podium-name">{player.name}</span>
+                        {/* Name */}
+                        <span className="lb-podium-name">{player.name}</span>
 
-                  {/* Reward */}
-                  <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "#EAB308" }}>
-                    {player.reward}
-                  </span>
+                        {/* Reward */}
+                        <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "#EAB308" }}>
+                          {player.volume.toLocaleString()} USDC
+                        </span>
 
-                  {/* Podium block */}
-                  <div style={{
-                    width: isFirst ? "100px" : "85px",
-                    height: PODIUM_HEIGHT[actualRank],
-                    background: PODIUM_BG[actualRank],
-                    borderRadius: "12px 12px 0 0",
-                    border: `1px solid ${RANK_COLOR[actualRank]}33`,
-                    borderBottom: "none",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    marginTop: "0.4rem",
-                  }}>
-                    <span style={{
-                      fontSize: isFirst ? "1.5rem" : "1.2rem",
-                      fontWeight: 900,
-                      color: RANK_COLOR[actualRank],
-                    }}>
-                      {actualRank}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* ── Your Position ── */}
-          <div style={{
-            margin: "1.5rem auto", maxWidth: "500px",
-            border: "1px solid rgba(79,107,255,0.3)",
-            borderRadius: "14px",
-            padding: "0.85rem 1.25rem",
-            background: "rgba(79,107,255,0.06)",
-          }}>
-            <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.1em", textAlign: "center", marginBottom: "0.5rem" }}>
-              You
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <span style={{ fontWeight: 900, fontSize: "0.9rem", color: "#64748B", width: "32px" }}>#42</span>
-              <div style={{
-                width: "36px", height: "36px", borderRadius: "50%",
-                background: "linear-gradient(135deg, #1E293B, #0F172A)",
-                border: "2px solid rgba(79,107,255,0.4)",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem",
-              }}>👤</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "#F1F5F9" }}>0x77c4...ca82 (You)</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#EAB308" }}>+320 WLD</div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Top 100 List ── */}
-          <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-              <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#F8FAFC" }}>Top 100</h3>
-              {/* Search */}
-              <div style={{ position: "relative" }}>
-                <Search size={13} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#475569" }} />
-                <input
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  type="text"
-                  placeholder="Search..."
-                  style={{
-                    paddingLeft: "32px", paddingRight: "12px", paddingTop: "6px", paddingBottom: "6px",
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: "8px", color: "#E2E8F0", fontSize: "12px",
-                    outline: "none", width: "160px",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* List items */}
-            <div style={{
-              border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: "14px",
-              overflow: "hidden",
-              background: "rgba(255,255,255,0.015)",
-            }}>
-              {(search ? filtered : LEADERBOARD_DATA).map((player, idx, arr) => (
-                <div
-                  key={player.rank}
-                  className="lb-row"
-                  style={{
-                    borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
-                    transition: "background 0.15s",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.025)"}
-                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                >
-                  {/* Rank */}
-                  <span style={{
-                    width: "28px", fontWeight: 900, fontSize: "0.85rem",
-                    color: player.rank <= 3 ? RANK_COLOR[player.rank] : "#475569",
-                    textAlign: "center", flexShrink: 0,
-                  }}>
-                    {player.rank <= 3 ? RANK_MEDAL[player.rank] : `#${player.rank}`}
-                  </span>
-
-                  {/* Avatar */}
-                  <div style={{
-                    width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
-                    background: "linear-gradient(135deg, #1E293B, #0F172A)",
-                    border: player.rank <= 3 ? `2px solid ${RANK_COLOR[player.rank]}66` : "1px solid rgba(255,255,255,0.08)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "0.9rem",
-                  }}>👤</div>
-
-                  {/* Name + verified */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#F1F5F9", display: "flex", alignItems: "center", gap: "5px" }}>
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{player.name}</span>
-                      {player.verified && <ShieldCheck size={12} color="#4ADE80" />}
-                    </div>
-                    <div className="lb-row-meta" style={{ fontSize: "0.7rem", color: "#475569", marginTop: "1px", display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span>{player.winRate}% win</span>
-                      <span>·</span>
-                      <span>{player.matches} matches</span>
-                      {player.streak > 0 && (
-                        <>
-                          <span>·</span>
-                          <span style={{ color: "#EAB308", display: "flex", alignItems: "center", gap: "2px" }}>
-                            <Flame size={10} fill="#EAB308" /> {player.streak}
+                        {/* Podium block */}
+                        <div style={{
+                          width: isFirst ? "100px" : "85px",
+                          height: PODIUM_HEIGHT[actualRank] || "2rem",
+                          background: PODIUM_BG[actualRank] || "rgba(255,255,255,0.05)",
+                          borderRadius: "12px 12px 0 0",
+                          border: `1px solid ${RANK_COLOR[actualRank] || '#64748B'}33`,
+                          borderBottom: "none",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          marginTop: "0.4rem",
+                        }}>
+                          <span style={{
+                            fontSize: isFirst ? "1.5rem" : "1.2rem",
+                            fontWeight: 900,
+                            color: RANK_COLOR[actualRank] || '#64748B',
+                          }}>
+                            {actualRank}
                           </span>
-                        </>
-                      )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ── Your Position ── */}
+              {address && (
+                <div style={{
+                  margin: "1.5rem auto", maxWidth: "500px",
+                  border: "1px solid rgba(79,107,255,0.3)",
+                  borderRadius: "14px",
+                  padding: "0.85rem 1.25rem",
+                  background: "rgba(79,107,255,0.06)",
+                  display: "flex", alignItems: "center", gap: "0.75rem",
+                }}>
+                  <span style={{ fontWeight: 900, fontSize: "0.9rem", color: "#64748B", width: "24px", textAlign: "center" }}>
+                    {currentUserStats ? `#${currentUserStats.rank}` : "-"}
+                  </span>
+                  <div style={{
+                    width: "36px", height: "36px", borderRadius: "50%",
+                    background: "linear-gradient(135deg, #1E293B, #0F172A)",
+                    border: "2px solid rgba(79,107,255,0.4)",
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem",
+                  }}>👤</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "#F1F5F9" }}>
+                      {address.slice(0, 6)}...{address.slice(-4)} <span style={{ color: "#64748B", fontSize: "0.75rem" }}>(You)</span>
                     </div>
                   </div>
-
-                  {/* Reward */}
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: "0.8rem", color: "#EAB308" }}>{player.reward}</div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#EAB308" }}>
+                       {currentUserStats ? currentUserStats.volume.toLocaleString() : "0"} USDC
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
 
-            <p style={{ textAlign: "center", marginTop: "1rem", fontSize: "11px", color: "#334155" }}>
-              Season S1: Toraja Rise · Showing top {LEADERBOARD_DATA.length}
-            </p>
-          </div>
+              {/* ── Top 100 List ── */}
+              <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+                  <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#F8FAFC" }}>Top Predictors</h3>
+                  {/* Search */}
+                  <div style={{ position: "relative" }}>
+                    <Search size={13} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#475569" }} />
+                    <input
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      type="text"
+                      placeholder="Search address..."
+                      style={{
+                        paddingLeft: "32px", paddingRight: "12px", paddingTop: "6px", paddingBottom: "6px",
+                        background: "rgba(255,255,255,0.03)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: "8px", color: "#E2E8F0", fontSize: "12px",
+                        outline: "none", width: "160px",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* List items */}
+                {filtered.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "2rem", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "14px", color: "#64748B" }}>
+                     No predictions match your search.
+                  </div>
+                ) : (
+                  <div style={{
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: "14px",
+                    overflow: "hidden",
+                    background: "rgba(255,255,255,0.015)",
+                  }}>
+                    {filtered.map((player, idx, arr) => (
+                      <div
+                        key={player.rank}
+                        className="lb-row"
+                        style={{
+                          borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                          transition: "background 0.15s",
+                          cursor: "pointer",
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.025)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                      >
+                        {/* Rank */}
+                        <span style={{
+                          width: "28px", fontWeight: 900, fontSize: "0.85rem",
+                          color: player.rank <= 3 ? RANK_COLOR[player.rank] : "#475569",
+                          textAlign: "center", flexShrink: 0,
+                        }}>
+                          {player.rank <= 3 ? RANK_MEDAL[player.rank] : `#${player.rank}`}
+                        </span>
+
+                        {/* Avatar */}
+                        <div style={{
+                          width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
+                          background: "linear-gradient(135deg, #1E293B, #0F172A)",
+                          border: player.rank <= 3 ? `2px solid ${RANK_COLOR[player.rank]}66` : "1px solid rgba(255,255,255,0.08)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: "0.9rem",
+                        }}>👤</div>
+
+                        {/* Name + verified */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#F1F5F9", display: "flex", alignItems: "center", gap: "5px" }}>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{player.name}</span>
+                            {player.verified && <ShieldCheck size={12} color="#4ADE80" />}
+                          </div>
+                          <div className="lb-row-meta" style={{ fontSize: "0.7rem", color: "#475569", marginTop: "1px", display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span>{player.matches} matches played</span>
+                          </div>
+                        </div>
+
+                        {/* Reward */}
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <div style={{ fontWeight: 800, fontSize: "0.8rem", color: "#EAB308" }}>{player.volume.toLocaleString()}</div>
+                          <div style={{ fontSize: "10px", color: "#64748B", textTransform: "uppercase", fontWeight: 700 }}>USDC Vol</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </main>
     </div>
