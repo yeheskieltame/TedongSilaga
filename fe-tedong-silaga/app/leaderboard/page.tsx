@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
-import { Search, ShieldCheck, Users, TrendingUp, Crown } from "lucide-react";
+import { Search, Users, TrendingUp, Crown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { useAccount } from "wagmi";
 
 const RANK_MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 const RANK_COLOR: Record<number, string> = { 1: "#EAB308", 2: "#94A3B8", 3: "#CD7F32" };
@@ -15,60 +14,46 @@ const PODIUM_BG: Record<number, string> = {
   3: "linear-gradient(180deg, rgba(205,127,50,0.2) 0%, rgba(205,127,50,0.05) 100%)",
 };
 
-interface LeaderboardPlayer {
+interface BuffaloRank {
   rank: number;
-  address: string;
+  id: number;
   name: string;
-  volume: number;
-  matches: number;
-  verified: boolean;
+  total_match: number;
+  total_wins: number;
+  total_winning_pool: number;
 }
 
 export default function LeaderboardPage() {
-  const { address } = useAccount();
   const [activeTab, setActiveTab] = useState<"Season" | "Monthly" | "All-Time">("All-Time");
   const [search, setSearch] = useState("");
   
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardPlayer[]>([]);
+  const [leaderboardData, setLeaderboardData] = useState<BuffaloRank[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchLeaderboard() {
       try {
-        const { data, error } = await supabase.from("predictions").select("user_address, amount");
+        const { data, error } = await supabase
+          .from("buffalo")
+          .select("id, buffalo_name, total_match, total_wins, total_winning_pool")
+          .order("total_wins", { ascending: false })
+          .order("total_winning_pool", { ascending: false });
+
         if (error) throw error;
 
-        // Aggregate by user_address
-        const userStats: Record<string, { matches: number; volume: number }> = {};
-        
-        data.forEach(p => {
-          const addr = p.user_address.toLowerCase();
-          if (!userStats[addr]) {
-             userStats[addr] = { matches: 0, volume: 0 };
-          }
-          userStats[addr].matches += 1;
-          userStats[addr].volume += Number(p.amount);
-        });
-
-        // Convert to array and sort by volume
-        const sorted = Object.entries(userStats)
-          .map(([addr, stats]) => ({
-             address: addr,
-             ...stats
-          }))
-          .sort((a, b) => b.volume - a.volume)
-          .map((u, i) => ({
+        // Map data to rank format
+        const sorted = (data || []).map((b, i) => ({
              rank: i + 1,
-             address: u.address,
-             name: `${u.address.slice(0, 6)}...${u.address.slice(-4)}`,
-             volume: u.volume,
-             matches: u.matches,
-             verified: false // Placeholder for World ID status
-          }));
+             id: b.id,
+             name: b.buffalo_name,
+             total_match: b.total_match || 0,
+             total_wins: b.total_wins || 0,
+             total_winning_pool: b.total_winning_pool || 0,
+        }));
 
         setLeaderboardData(sorted);
       } catch (err) {
-        console.error("Error fetching leaderboard:", err);
+        console.error("Error fetching buffalo leaderboard:", err);
       } finally {
         setLoading(false);
       }
@@ -77,8 +62,8 @@ export default function LeaderboardPage() {
     fetchLeaderboard();
   }, []);
 
-  const filtered = leaderboardData.filter(p =>
-    p.address.toLowerCase().includes(search.toLowerCase()) || p.name.toLowerCase().includes(search.toLowerCase())
+  const filtered = leaderboardData.filter(b =>
+    b.name.toLowerCase().includes(search.toLowerCase())
   );
 
   const top3 = leaderboardData.slice(0, 3);
@@ -88,9 +73,6 @@ export default function LeaderboardPage() {
   if (top3[1]) podiumOrder.push(top3[1]);
   if (top3[0]) podiumOrder.push(top3[0]);
   if (top3[2]) podiumOrder.push(top3[2]);
-
-  // Find current user stats
-  const currentUserStats = address ? leaderboardData.find(p => p.address === address.toLowerCase()) : null;
 
   return (
     <div style={{ minHeight: "100vh", background: "#0B0F1A", color: "#E2E8F0" }}>
@@ -105,15 +87,15 @@ export default function LeaderboardPage() {
             <p style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: "#EAB308", marginBottom: "0.5rem" }}>
               Global Rankings
             </p>
-            <h1 className="lb-title">Hall of Fame</h1>
-            <p className="lb-subtitle">Top predictors across the Tedong Silaga Arena</p>
+            <h1 className="lb-title">Buffalo Hall of Fame</h1>
+            <p className="lb-subtitle">Top champion buffaloes across the Tedong Silaga Arena</p>
           </div>
 
           {/* Stats summary — desktop */}
           <div className="desktop-nav-only" style={{ display: "flex", justifyContent: "center", gap: "2.5rem", marginBottom: "1.5rem" }}>
             {[
-              { label: "Predictors", value: leaderboardData.length.toLocaleString(), icon: <Users size={13} style={{ color: "#4F6BFF" }} /> },
-              { label: "Vol Staked", value: `${leaderboardData.reduce((acc, p) => acc + p.volume, 0).toLocaleString()} USDC`, icon: <TrendingUp size={13} style={{ color: "#4ADE80" }} /> },
+              { label: "Buffaloes", value: leaderboardData.length.toLocaleString(), icon: <Users size={13} style={{ color: "#4F6BFF" }} /> },
+              { label: "Total Winning Pools Generated", value: `${leaderboardData.reduce((acc, b) => acc + (b.total_winning_pool || 0), 0).toLocaleString()} USDC`, icon: <TrendingUp size={13} style={{ color: "#4ADE80" }} /> },
             ].map((s, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <span style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
@@ -146,10 +128,10 @@ export default function LeaderboardPage() {
           </div>
 
           {loading ? (
-             <div style={{ textAlign: "center", padding: "3rem", color: "#64748B" }}>Loading rankings...</div>
+             <div style={{ textAlign: "center", padding: "3rem", color: "#64748B" }}>Loading buffalo rankings...</div>
           ) : leaderboardData.length === 0 ? (
              <div style={{ textAlign: "center", padding: "3rem", color: "#64748B", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "14px", maxWidth: "400px", margin: "0 auto" }}>
-               No predictions have been made yet.<br/>Be the first to stake and top the leaderboard!
+               No buffaloes have been recorded yet.
              </div>
           ) : (
             <>
@@ -182,7 +164,7 @@ export default function LeaderboardPage() {
                           boxShadow: `0 0 20px ${RANK_COLOR[actualRank] || '#64748B'}33`,
                           position: "relative",
                         }}>
-                          👤
+                          🐃
                         </div>
 
                         {/* Name */}
@@ -190,7 +172,7 @@ export default function LeaderboardPage() {
 
                         {/* Reward */}
                         <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "#EAB308" }}>
-                          {player.volume.toLocaleString()} USDC
+                          {player.total_wins} Wins
                         </span>
 
                         {/* Podium block */}
@@ -218,42 +200,10 @@ export default function LeaderboardPage() {
                 </div>
               )}
 
-              {/* ── Your Position ── */}
-              {address && (
-                <div style={{
-                  margin: "1.5rem auto", maxWidth: "500px",
-                  border: "1px solid rgba(79,107,255,0.3)",
-                  borderRadius: "14px",
-                  padding: "0.85rem 1.25rem",
-                  background: "rgba(79,107,255,0.06)",
-                  display: "flex", alignItems: "center", gap: "0.75rem",
-                }}>
-                  <span style={{ fontWeight: 900, fontSize: "0.9rem", color: "#64748B", width: "24px", textAlign: "center" }}>
-                    {currentUserStats ? `#${currentUserStats.rank}` : "-"}
-                  </span>
-                  <div style={{
-                    width: "36px", height: "36px", borderRadius: "50%",
-                    background: "linear-gradient(135deg, #1E293B, #0F172A)",
-                    border: "2px solid rgba(79,107,255,0.4)",
-                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem",
-                  }}>👤</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "#F1F5F9" }}>
-                      {address.slice(0, 6)}...{address.slice(-4)} <span style={{ color: "#64748B", fontSize: "0.75rem" }}>(You)</span>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#EAB308" }}>
-                       {currentUserStats ? currentUserStats.volume.toLocaleString() : "0"} USDC
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* ── Top 100 List ── */}
-              <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+              <div style={{ maxWidth: "700px", margin: "0 auto", marginTop: "2rem" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-                  <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#F8FAFC" }}>Top Predictors</h3>
+                  <h3 style={{ fontWeight: 800, fontSize: "1rem", color: "#F8FAFC" }}>Top Buffaloes</h3>
                   {/* Search */}
                   <div style={{ position: "relative" }}>
                     <Search size={13} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#475569" }} />
@@ -261,7 +211,7 @@ export default function LeaderboardPage() {
                       value={search}
                       onChange={e => setSearch(e.target.value)}
                       type="text"
-                      placeholder="Search address..."
+                      placeholder="Search buffalo name..."
                       style={{
                         paddingLeft: "32px", paddingRight: "12px", paddingTop: "6px", paddingBottom: "6px",
                         background: "rgba(255,255,255,0.03)",
@@ -276,7 +226,7 @@ export default function LeaderboardPage() {
                 {/* List items */}
                 {filtered.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "2rem", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "14px", color: "#64748B" }}>
-                     No predictions match your search.
+                     No buffaloes match your search.
                   </div>
                 ) : (
                   <div style={{
@@ -313,23 +263,28 @@ export default function LeaderboardPage() {
                           border: player.rank <= 3 ? `2px solid ${RANK_COLOR[player.rank]}66` : "1px solid rgba(255,255,255,0.08)",
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: "0.9rem",
-                        }}>👤</div>
+                        }}>🐃</div>
 
                         {/* Name + verified */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#F1F5F9", display: "flex", alignItems: "center", gap: "5px" }}>
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{player.name}</span>
-                            {player.verified && <ShieldCheck size={12} color="#4ADE80" />}
                           </div>
                           <div className="lb-row-meta" style={{ fontSize: "0.7rem", color: "#475569", marginTop: "1px", display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span>{player.matches} matches played</span>
+                            <span>{player.total_match} matches fought</span>
                           </div>
+                        </div>
+
+                        {/* Middle Stats */}
+                        <div style={{ textAlign: "right", flexShrink: 0, paddingRight: "20px" }}>
+                          <div style={{ fontWeight: 800, fontSize: "0.8rem", color: "#4ADE80" }}>{player.total_wins}</div>
+                          <div style={{ fontSize: "10px", color: "#64748B", textTransform: "uppercase", fontWeight: 700 }}>Wins</div>
                         </div>
 
                         {/* Reward */}
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <div style={{ fontWeight: 800, fontSize: "0.8rem", color: "#EAB308" }}>{player.volume.toLocaleString()}</div>
-                          <div style={{ fontSize: "10px", color: "#64748B", textTransform: "uppercase", fontWeight: 700 }}>USDC Vol</div>
+                          <div style={{ fontWeight: 800, fontSize: "0.8rem", color: "#EAB308" }}>{player.total_winning_pool.toLocaleString(undefined, { maximumFractionDigits: 1 })}</div>
+                          <div style={{ fontSize: "10px", color: "#64748B", textTransform: "uppercase", fontWeight: 700 }}>Pool Won</div>
                         </div>
                       </div>
                     ))}
