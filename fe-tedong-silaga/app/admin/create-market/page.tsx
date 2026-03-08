@@ -54,7 +54,7 @@ export default function CreateMarketPage() {
           formData.event_name,
           formData.buffalo_a_name,
           formData.buffalo_b_name,
-          formData.embed_poster || "https://tedongsilaga.com", // Menggunakan poster sebagai sumber data
+          formData.embed_poster,
         ],
       });
 
@@ -170,7 +170,7 @@ export default function CreateMarketPage() {
               <InputGroup label="Event Name (e.g., Final Toraja 2026)" name="event_name" value={formData.event_name} onChange={handleChange} required />
               <InputGroup label="Arena Name (e.g., Bori Arena)" name="arena_name" value={formData.arena_name} onChange={handleChange} required />
               <div style={{ gridColumn: "1 / -1" }}>
-                <InputGroup label="Event Poster Embed URL / Image URL" name="embed_poster" value={formData.embed_poster} onChange={handleChange} />
+                <InputGroup label="Event Poster Embed URL / Image URL" name="embed_poster" value={formData.embed_poster} onChange={handleChange} required />
               </div>
             </div>
           </div>

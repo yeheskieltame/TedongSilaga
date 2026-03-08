@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     } = body;
 
     // Validasi dasar (pastikan data yang wajib tidak kosong)
-    if (!market_address || !event_name || !buffalo_a_name || !buffalo_b_name || !arena_name) {
+    if (!market_address || !event_name || !buffalo_a_name || !buffalo_b_name || !arena_name || !embed_poster) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }

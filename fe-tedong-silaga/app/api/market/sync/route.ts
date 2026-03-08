@@ -58,8 +58,8 @@ export async function GET() {
               event_name: eventName,
               buffalo_a_name: buffaloIdA,
               buffalo_b_name: buffaloIdB,
-              arena_name: dataSourceUrl || "Tedong Arena",
-              embed_poster: "",
+              arena_name: "Tedong Arena",
+              embed_poster: dataSourceUrl,
               url_embed_buffalo_a: "",
               url_embed_buffalo_b: "",
             }
