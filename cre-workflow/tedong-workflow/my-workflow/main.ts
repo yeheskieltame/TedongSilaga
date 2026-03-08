@@ -123,13 +123,16 @@ function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
 
     const fbResult = scrapeFacebookPage(runtime, buffaloA, buffaloB);
 
-    let facebookText = fbResult.matchedText;
-    if (!facebookText) {
-      runtime.log('[Step 3] No Facebook posts found, will default to draw');
-      facebookText = 'No community posts found about this match.';
-    } else {
-      runtime.log(`[Step 3] Found ${fbResult.postCount} Facebook posts`);
+    if (fbResult.statusCode < 200 || fbResult.statusCode >= 300) {
+      throw new Error(`[Step 3] Facebook Apify API scraping failed with status ${fbResult.statusCode}. Aborting on-chain execution to prevent incorrect settlement!`);
     }
+
+    let facebookText = fbResult.matchedText;
+    if (!facebookText || fbResult.postCount === 0) {
+      throw new Error('[Step 3] No Facebook posts found or Facebook API failed to retrieve posts. Aborting on-chain execution to avoid incorrect fallback to DRAW and prevent loss of funds!');
+    }
+    
+    runtime.log(`[Step 3] Found ${fbResult.postCount} Facebook posts`);
 
     // Step 4: Ask Gemini to analyze the scraped Facebook content
     runtime.log('[Step 4] Analyzing with Gemini AI...');

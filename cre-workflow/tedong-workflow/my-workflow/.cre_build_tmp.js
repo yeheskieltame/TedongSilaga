@@ -17067,16 +17067,33 @@ function scrapeFacebookPage(runtime2, buffaloA, buffaloB) {
 }
 var buildApifyRequest = (apifyToken, buffaloA, buffaloB) => (sendRequester, config) => {
   const actorInput = {
-    page_id: config.facebookPageId,
-    maxResults: 3
+    captionText: false,
+    resultsLimit: 1,
+    startUrls: [
+      {
+        url: `https://www.facebook.com/profile.php?id=${config.facebookPageId}`
+      }
+    ]
   };
   const bodyBytes = new TextEncoder().encode(JSON.stringify(actorInput));
-  const body = Buffer.from(bodyBytes).toString("base64");
+  const base64map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let body = "";
+  for (let i2 = 0;i2 < bodyBytes.length; i2 += 3) {
+    const a = bodyBytes[i2];
+    const b = i2 + 1 < bodyBytes.length ? bodyBytes[i2 + 1] : 0;
+    const c = i2 + 2 < bodyBytes.length ? bodyBytes[i2 + 2] : 0;
+    const enc1 = a >> 2;
+    const enc2 = (a & 3) << 4 | b >> 4;
+    const enc3 = (b & 15) << 2 | c >> 6;
+    const enc4 = c & 63;
+    body += base64map.charAt(enc1) + base64map.charAt(enc2) + (i2 + 1 < bodyBytes.length ? base64map.charAt(enc3) : "=") + (i2 + 2 < bodyBytes.length ? base64map.charAt(enc4) : "=");
+  }
   const actorId = config.apifyActorId;
   const resp = sendRequester.sendRequest({
     url: `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${apifyToken}`,
     method: "POST",
     body,
+    timeout: "120s",
     headers: {
       "Content-Type": "application/json"
     }
@@ -17094,7 +17111,7 @@ var buildApifyRequest = (apifyToken, buffaloA, buffaloB) => (sendRequester, conf
   } catch {
     console.log(`[Apify] Failed to parse response: ${bodyText.substring(0, 200)}`);
   }
-  const allMessages = posts.map((p) => p.message || p.message_rich || "").filter((t) => t.length > 0);
+  const allMessages = posts.map((p) => p.text || p.message || p.message_rich || "").filter((t) => t.length > 0);
   const lowerA = buffaloA.toLowerCase();
   const lowerB = buffaloB.toLowerCase();
   const relevant = allMessages.filter((msg) => {
@@ -17160,11 +17177,23 @@ var buildGeminiRequest = (question, apiKey) => (sendRequester, config) => {
     ]
   };
   const bodyBytes = new TextEncoder().encode(JSON.stringify(requestData));
-  const body = Buffer.from(bodyBytes).toString("base64");
+  const base64map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let body = "";
+  for (let i2 = 0;i2 < bodyBytes.length; i2 += 3) {
+    const a = bodyBytes[i2];
+    const b = i2 + 1 < bodyBytes.length ? bodyBytes[i2 + 1] : 0;
+    const c = i2 + 2 < bodyBytes.length ? bodyBytes[i2 + 2] : 0;
+    const enc1 = a >> 2;
+    const enc2 = (a & 3) << 4 | b >> 4;
+    const enc3 = (b & 15) << 2 | c >> 6;
+    const enc4 = c & 63;
+    body += base64map.charAt(enc1) + base64map.charAt(enc2) + (i2 + 1 < bodyBytes.length ? base64map.charAt(enc3) : "=") + (i2 + 2 < bodyBytes.length ? base64map.charAt(enc4) : "=");
+  }
   const resp = sendRequester.sendRequest({
     url: `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent`,
     method: "POST",
     body,
+    timeout: "120s",
     headers: {
       "Content-Type": "application/json",
       "x-goog-api-key": apiKey
@@ -17242,13 +17271,14 @@ function onLogTrigger(runtime2, log) {
     runtime2.log(`[Step 2] Buffalo B: ${buffaloB}`);
     runtime2.log("[Step 3] Searching Facebook via Apify...");
     const fbResult = scrapeFacebookPage(runtime2, buffaloA, buffaloB);
-    let facebookText = fbResult.matchedText;
-    if (!facebookText) {
-      runtime2.log("[Step 3] No Facebook posts found, will default to draw");
-      facebookText = "No community posts found about this match.";
-    } else {
-      runtime2.log(`[Step 3] Found ${fbResult.postCount} Facebook posts`);
+    if (fbResult.statusCode < 200 || fbResult.statusCode >= 300) {
+      throw new Error(`[Step 3] Facebook Apify API scraping failed with status ${fbResult.statusCode}. Aborting on-chain execution to prevent incorrect settlement!`);
     }
+    let facebookText = fbResult.matchedText;
+    if (!facebookText || fbResult.postCount === 0) {
+      throw new Error("[Step 3] No Facebook posts found or Facebook API failed to retrieve posts. Aborting on-chain execution to avoid incorrect fallback to DRAW and prevent loss of funds!");
+    }
+    runtime2.log(`[Step 3] Found ${fbResult.postCount} Facebook posts`);
     runtime2.log("[Step 4] Analyzing with Gemini AI...");
     const geminiResult = askGemini(runtime2, buffaloA, buffaloB, facebookText);
     const winner = parseInt(geminiResult.answer, 10);

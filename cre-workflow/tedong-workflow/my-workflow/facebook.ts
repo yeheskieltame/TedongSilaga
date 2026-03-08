@@ -74,12 +74,30 @@ const buildApifyRequest =
   (sendRequester: HTTPSendRequester, config: Config): FacebookScrapeResponse => {
     // Apify actor input — scrape latest posts from the Facebook page
     const actorInput = {
-      page_id: config.facebookPageId,
-      maxResults: 3,
+      captionText: false,
+      resultsLimit: 1,
+      startUrls: [
+        {
+          url: `https://www.facebook.com/profile.php?id=${config.facebookPageId}`
+        }
+      ]
     };
 
     const bodyBytes = new TextEncoder().encode(JSON.stringify(actorInput));
-    const body = (Buffer as any).from(bodyBytes).toString('base64');
+    const base64map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let body = "";
+    for (let i = 0; i < bodyBytes.length; i += 3) {
+      const a = bodyBytes[i];
+      const b = i + 1 < bodyBytes.length ? bodyBytes[i + 1] : 0;
+      const c = i + 2 < bodyBytes.length ? bodyBytes[i + 2] : 0;
+      const enc1 = a >> 2;
+      const enc2 = ((a & 3) << 4) | (b >> 4);
+      const enc3 = ((b & 15) << 2) | (c >> 6);
+      const enc4 = c & 63;
+      body += base64map.charAt(enc1) + base64map.charAt(enc2) + 
+              (i + 1 < bodyBytes.length ? base64map.charAt(enc3) : "=") + 
+              (i + 2 < bodyBytes.length ? base64map.charAt(enc4) : "=");
+    }
 
     // Sync API: runs actor and returns dataset items directly
     const actorId = config.apifyActorId;
@@ -88,6 +106,7 @@ const buildApifyRequest =
         url: `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${apifyToken}`,
         method: 'POST',
         body,
+        timeout: '120s',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -105,8 +124,7 @@ const buildApifyRequest =
       return { statusCode: resp.statusCode, postCount: 0, matchedText: "" };
     }
 
-    // Parse response — Apify returns an array of post objects
-    let posts: FacebookPost[] = [];
+    let posts: any[] = [];
     try {
       const parsed = JSON.parse(bodyText);
       posts = Array.isArray(parsed) ? parsed : [];
@@ -117,7 +135,7 @@ const buildApifyRequest =
 
     // Collect message text from all posts, filtering for buffalo name mentions
     const allMessages = posts
-      .map((p) => p.message || p.message_rich || '')
+      .map((p) => p.text || p.message || p.message_rich || '')
       .filter((t) => t.length > 0);
 
     // Try to find posts mentioning both buffalo names
