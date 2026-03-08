@@ -1,5 +1,23 @@
 "use client";
 
+/**
+ * ============================================================================
+ * TESTING PAGE FOR HACATHON JURY
+ * ============================================================================
+ * 
+ * This page is ONLY for testing purposes so Hacathon Jury can try full features.
+ * Uses admin privatekey automatically via env variables.
+ * 
+ * WARNING: In production, this page MUST BE REMOVED!
+ * Because lock & resolve should only be executable by admin wallet,
+ * not through public web page.
+ * 
+ * In production, admin will use:
+ * - Dedicated admin CLI tool, or
+ * - Separate admin dashboard with strict authentication
+ * ============================================================================
+ */
+
 import React, { useState, useEffect } from "react";
 import { Lock, ShieldAlert, CheckCircle, X, Loader2, Coins } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -187,6 +205,22 @@ export default function ActionPage() {
             borderRadius: "50%",
             pointerEvents: "none",
           }} />
+
+          {/* WARNING BANNER - FOR HACATHON TESTING ONLY */}
+          <div style={{
+            background: "rgba(251, 191, 36, 0.1)",
+            border: "1px solid rgba(251, 191, 36, 0.3)",
+            borderRadius: "12px",
+            padding: "0.75rem 1rem",
+            marginBottom: "1rem",
+            width: "100%",
+            zIndex: 1,
+            position: "relative",
+          }}>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#FBBF24", textAlign: "center", fontWeight: 600 }}>
+              HACATHON TESTING ONLY - This page will be removed in production
+            </p>
+          </div>
 
           {/* Icon Header */}
           <div style={{
