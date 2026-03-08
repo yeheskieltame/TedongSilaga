@@ -30,15 +30,39 @@ export default function CreateMarketPage() {
     url_embed_buffalo_b: "",
   });
 
-  const [buffalos, setBuffalos] = useState<{ buffalo_name: string }[]>([]);
+  const [buffalos, setBuffalos] = useState<{ buffalo_name: string; url_embed?: string }[]>([]);
 
   React.useEffect(() => {
     async function fetchBuffalos() {
-      const { data } = await supabase.from("buffalo").select("buffalo_name");
+      const { data } = await supabase.from("buffalo").select("buffalo_name, url_embed");
       if (data) setBuffalos(data);
+      else {
+        const { data: basicData } = await supabase.from("buffalo").select("buffalo_name");
+        if (basicData) setBuffalos(basicData.map(b => ({ ...b, url_embed: "" })));
+      }
     }
     fetchBuffalos();
   }, []);
+
+  const handleBuffaloAChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedName = e.target.value;
+    const buffalo = buffalos.find(b => b.buffalo_name === selectedName);
+    setFormData({ 
+      ...formData, 
+      buffalo_a_name: selectedName,
+      url_embed_buffalo_a: buffalo?.url_embed || formData.url_embed_buffalo_a 
+    });
+  };
+
+  const handleBuffaloBChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedName = e.target.value;
+    const buffalo = buffalos.find(b => b.buffalo_name === selectedName);
+    setFormData({ 
+      ...formData, 
+      buffalo_b_name: selectedName,
+      url_embed_buffalo_b: buffalo?.url_embed || formData.url_embed_buffalo_b 
+    });
+  };
 
   const [isLoading, setIsLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
@@ -192,7 +216,7 @@ export default function CreateMarketPage() {
             <div style={{ background: "rgba(34,197,94,0.03)", border: "1px solid rgba(34,197,94,0.1)", padding: "2rem", borderRadius: "20px" }}>
               <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#4ADE80", marginBottom: "1.5rem" }}>Buffalo A (Choice 1)</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                <InputGroup label="Buffalo A Name" name="buffalo_a_name" value={formData.buffalo_a_name} onChange={handleChange} required list="buffalo-list" />
+                <InputGroup label="Buffalo A Name" name="buffalo_a_name" value={formData.buffalo_a_name} onChange={handleBuffaloAChange} required list="buffalo-list" />
                 <InputGroup label="URL Embed Kertas Kuning / Stats" name="url_embed_buffalo_a" value={formData.url_embed_buffalo_a} onChange={handleChange} />
               </div>
             </div>
@@ -201,7 +225,7 @@ export default function CreateMarketPage() {
             <div style={{ background: "rgba(239,68,68,0.03)", border: "1px solid rgba(239,68,68,0.1)", padding: "2rem", borderRadius: "20px" }}>
               <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#F87171", marginBottom: "1.5rem" }}>Buffalo B (Choice 2)</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                <InputGroup label="Buffalo B Name" name="buffalo_b_name" value={formData.buffalo_b_name} onChange={handleChange} required list="buffalo-list" />
+                <InputGroup label="Buffalo B Name" name="buffalo_b_name" value={formData.buffalo_b_name} onChange={handleBuffaloBChange} required list="buffalo-list" />
                 <InputGroup label="URL Embed Kertas Kuning / Stats" name="url_embed_buffalo_b" value={formData.url_embed_buffalo_b} onChange={handleChange} />
               </div>
             </div>
