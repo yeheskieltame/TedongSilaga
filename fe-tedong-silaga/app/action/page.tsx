@@ -90,7 +90,7 @@ export default function ActionPage() {
     const claimedResult = userStakeData[i * 2 + 1]?.result as boolean | undefined;
     
     // Has a stake (either side > 0)
-    const hasStake = stakeResult ? (stakeResult[0] > 0n || stakeResult[1] > 0n) : false;
+    const hasStake = stakeResult ? (stakeResult[0] > BigInt(0) || stakeResult[1] > BigInt(0)) : false;
     // Has NOT claimed yet
     const hasNotClaimed = claimedResult === false;
     
