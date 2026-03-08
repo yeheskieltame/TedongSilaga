@@ -72,33 +72,63 @@ const CarouselMatchCard = ({ match }: { match: Record<string, unknown> }) => {
 
         <div style={{ 
           display: "flex", 
+          flexDirection: "column",
           alignItems: "center", 
           justifyContent: "center", 
-          padding: "0.75rem 0",
+          padding: "1.5rem 0",
           background: "rgba(255,255,255,0.02)",
-          borderRadius: "16px",
+          borderRadius: "24px",
           border: "1px solid rgba(255,255,255,0.03)",
-          marginTop: "0.5rem"
+          marginTop: "0.5rem",
         }}>
-          <div style={{ textAlign: "center", flex: 1, padding: "0 0.25rem" }}>
-            <div className="match-card-emoji">🐃</div>
-            <div className="match-card-name" style={{ fontSize: "0.8rem", fontWeight: 700, color: "#F1F5F9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{match.buffalo_a_name as string}</div>
-          </div>
-          
-          <div style={{ 
-            fontSize: "0.65rem", 
-            fontWeight: 900, 
-            color: "#475569", 
-            background: "rgba(255,255,255,0.05)",
-            padding: "4px 6px",
-            borderRadius: "6px",
-            margin: "0 0.3rem",
-            letterSpacing: "0.05em"
-          }}>VS</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative", marginBottom: "1rem" }}>
+            {/* Buffalo A Box */}
+            <div style={{ 
+              width: "100px", height: "100px", borderRadius: "20px", overflow: "hidden", 
+              background: "rgba(255,255,255,0.05)", border: "2px solid rgba(74,222,128,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              marginRight: "2px",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.3)"
+            }}>
+              {match.url_embed_buffalo_a ? (
+                <img src={match.url_embed_buffalo_a as string} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <span style={{ fontSize: "2rem" }}>🐃</span>
+              )}
+            </div>
+            
+            {/* VS Image Overlapping */}
+            <div style={{ 
+              position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)",
+              width: "56px", height: "56px", zIndex: 10, flexShrink: 0 
+            }}>
+              <img src="/vs.png" alt="VS" style={{ width: "100%", height: "100%", objectFit: "contain", filter: "drop-shadow(0 0 16px rgba(0,0,0,0.8))" }} />
+            </div>
 
-          <div style={{ textAlign: "center", flex: 1, padding: "0 0.25rem" }}>
-            <div className="match-card-emoji">🐃</div>
-            <div className="match-card-name" style={{ fontSize: "0.8rem", fontWeight: 700, color: "#F1F5F9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{match.buffalo_b_name as string}</div>
+            {/* Buffalo B Box */}
+            <div style={{ 
+              width: "100px", height: "100px", borderRadius: "20px", overflow: "hidden", 
+              background: "rgba(255,255,255,0.05)", border: "2px solid rgba(248,113,113,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              marginLeft: "2px",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.3)"
+            }}>
+              {match.url_embed_buffalo_b ? (
+                <img src={match.url_embed_buffalo_b as string} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <span style={{ fontSize: "2rem" }}>🐃</span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", width: "100%", padding: "0 0.5rem" }}>
+            <div style={{ flex: 1, textAlign: "center", fontSize: "0.75rem", fontWeight: 800, color: "#F1F5F9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {match.buffalo_a_name as string}
+            </div>
+            <div style={{ width: "20px" }} />
+            <div style={{ flex: 1, textAlign: "center", fontSize: "0.75rem", fontWeight: 800, color: "#F1F5F9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {match.buffalo_b_name as string}
+            </div>
           </div>
         </div>
 
@@ -134,14 +164,34 @@ export default function MatchCarousel({ scrollYProgress }: { scrollYProgress: Mo
   useEffect(() => {
     async function fetchMatches() {
       try {
-        const { data, error } = await supabase
+        const { data: marketsData, error: marketsError } = await supabase
           .from("markets")
           .select("*")
+          .eq("status", "Open")
           .order("created_at", { ascending: false })
-          .limit(6); // Show up to 6 recent markets in the carousel
+          .limit(8); 
         
-        if (error) throw error;
-        setMarkets((data as Record<string, unknown>[]) || []);
+        if (marketsError) throw marketsError;
+
+        // Fetch buffalo images separately to ensure we have the correct ones
+        const { data: buffaloData, error: buffaloError } = await supabase
+          .from("buffalo")
+          .select("buffalo_name, url_embed");
+
+        if (buffaloError) throw buffaloError;
+
+        const buffaloMap: Record<string, string> = {};
+        buffaloData?.forEach(b => {
+          buffaloMap[b.buffalo_name] = b.url_embed || "";
+        });
+
+        const enhancedMarkets = (marketsData || []).map((m: any) => ({
+          ...m,
+          url_embed_buffalo_a: buffaloMap[m.buffalo_a_name] || m.url_embed_buffalo_a,
+          url_embed_buffalo_b: buffaloMap[m.buffalo_b_name] || m.url_embed_buffalo_b,
+        }));
+
+        setMarkets(enhancedMarkets);
       } catch (err) {
         console.error("Failed to load carousel markets:", err);
       } finally {
