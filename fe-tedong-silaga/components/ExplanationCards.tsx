@@ -89,13 +89,13 @@ export default function ExplanationCards({ scrollYProgress }: { scrollYProgress:
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
         <Card
           delay={0}
-          title="🐃 What is Tedong Silaga?"
-          body="Tedong Silaga is a centuries-old tradition from the Toraja Highlands, representing honor, strength, and community. Prized buffalos compete in sacred arenas, drawing thousands to witness the spirit of the ancestors. We are bringing this legacy into the digital age."
+          title="🐃 Ancient Heritage: Ma'pasilaga Tedong"
+          body="Deep in the highlands of Tana Toraja, Indonesia, lives a centuries-old tradition called Ma'pasilaga Tedong (Tedong Silaga). These ritual buffalo fights are held during Rambu Solo', grand funeral festivals honoring nobility. Prized buffaloes, worth tens of thousands of dollars, showcase strength in open arenas before thousands of spectators."
         />
         <Card
           delay={0.15}
-          title="⛓ Why the Prediction Arena?"
-          body="By combining blockchain transparency with cultural legacy, we create a fair, bot-proof prediction market. World ID verification ensures one-human-one-vote, while WLD/USDC rewards empower community participants globally in a verifiably honest environment."
+          title="⛓ Modern Economy: Decentralized & Verifiable"
+          body="Traditional betting has always relied on localized trust and informal agreements. Tedong Silaga bridges this ancient legacy with Web3 technology, transforming opaque wagers into a globally accessible, mathematically fair prediction market powered by World Chain, Chainlink CRE, and Gemini AI. We honor the past while building a transparent future."
         />
       </div>
     </motion.section>

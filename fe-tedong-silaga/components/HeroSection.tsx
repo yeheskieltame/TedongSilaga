@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion, useTransform, MotionValue, useMotionValueEvent } from "framer-motion";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, PlayCircle } from "lucide-react";
 
 export default function HeroSection({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) {
   const [isVisible, setIsVisible] = React.useState(true);
@@ -121,8 +121,8 @@ export default function HeroSection({ scrollYProgress }: { scrollYProgress: Moti
             <div style={{ position: "absolute", bottom: "-6px", left: "15%", right: "15%", height: "12px", background: "#EAB308", filter: "blur(12px)", zIndex: -1, opacity: 0.5 }} />
             
             <button className="hero-btn-secondary" style={{ borderRadius: "9999px", position: "relative", zIndex: 10, background: "rgba(15, 23, 42, 0.6)", border: "1px solid rgba(255, 255, 255, 0.15)" }}>
-              <ShieldCheck size={18} color="#EAB308" />
-              Verify with World ID
+              <PlayCircle size={18} color="#EAB308" />
+              Watch Demo
             </button>
           </div>
           
