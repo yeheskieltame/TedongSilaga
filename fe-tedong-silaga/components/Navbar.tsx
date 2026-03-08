@@ -8,7 +8,6 @@ import {
   Home,
   Trophy,
   Zap,
-  Wallet,
   Store,
 } from "lucide-react";
 import WalletButton from "@/components/WalletButton";
