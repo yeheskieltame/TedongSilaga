@@ -317,7 +317,7 @@ export default function ActionPage() {
                   ) : (
                     filteredMarkets.map(m => (
                       <div 
-                        key={m.id}
+                        key={m.market_address}
                         onClick={() => !isSubmitting && setSelectedMarketAddress(m.market_address)}
                         style={{
                           padding: "1rem",

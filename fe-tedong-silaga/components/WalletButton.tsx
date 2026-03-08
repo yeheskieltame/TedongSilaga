@@ -5,14 +5,15 @@ import {
   useAccount,
   useConnect,
   useDisconnect,
-  useBalance,
   useChainId,
   useSwitchChain,
+  useReadContracts,
 } from "wagmi";
 import { worldChainSepolia } from "@/lib/wagmi";
 import { Wallet, X, ChevronDown, ExternalLink, Copy, Check, AlertTriangle } from "lucide-react";
 import { formatUnits } from "viem";
 import { createPortal } from "react-dom";
+import { MOCK_USDC_ADDRESS, MOCK_USDC_ABI } from "@/constants/contracts";
 
 // ── Helper: shorten address ──────────────────────────────────────────────────
 function shortenAddress(addr: string) {
@@ -197,7 +198,35 @@ function ConnectedDropdown({ address, onDisconnect }: { address: string; onDisco
   const [copied, setCopied] = useState(false);
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
-  const { data: balance } = useBalance({ address: address as `0x${string}` });
+  
+  const { data: usdcData } = useReadContracts({
+    contracts: [
+      {
+        address: MOCK_USDC_ADDRESS as `0x${string}`,
+        abi: MOCK_USDC_ABI,
+        functionName: "balanceOf",
+        args: [address as `0x${string}`],
+      },
+      {
+        address: MOCK_USDC_ADDRESS as `0x${string}`,
+        abi: MOCK_USDC_ABI,
+        functionName: "decimals",
+      },
+      {
+        address: MOCK_USDC_ADDRESS as `0x${string}`,
+        abi: MOCK_USDC_ABI,
+        functionName: "symbol",
+      }
+    ],
+    query: {
+      enabled: !!address,
+    }
+  });
+
+  const balanceValue = usdcData?.[0]?.result as bigint | undefined;
+  const balanceDecimals = usdcData?.[1]?.result as number | undefined;
+  const balanceSymbol = usdcData?.[2]?.result as string | undefined;
+
   const isWrongChain = chainId !== worldChainSepolia.id;
 
   const copyAddress = () => {
@@ -243,14 +272,14 @@ function ConnectedDropdown({ address, onDisconnect }: { address: string; onDisco
       </div>
 
       {/* Balance */}
-      {balance && (
+      {balanceValue !== undefined && balanceDecimals !== undefined && (
         <div style={{
           padding: "0.75rem 1rem", borderRadius: "10px",
           background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)",
         }}>
           <div style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", marginBottom: "3px" }}>Balance</div>
           <div style={{ fontWeight: 800, fontSize: "1rem", color: "#F8FAFC" }}>
-            {parseFloat(formatUnits(balance.value, balance.decimals)).toFixed(4)} {balance.symbol}
+            {parseFloat(formatUnits(balanceValue, balanceDecimals)).toFixed(4)} {balanceSymbol || "USDC"}
           </div>
         </div>
       )}

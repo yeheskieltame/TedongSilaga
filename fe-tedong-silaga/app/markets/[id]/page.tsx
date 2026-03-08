@@ -7,7 +7,7 @@ import {
   ArrowLeft, Share2, CheckCircle2, MapPin, Lock
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useAccount, useBalance, useReadContract, useWriteContract, usePublicClient } from "wagmi";
+import { useAccount, useReadContracts, useReadContract, useWriteContract, usePublicClient } from "wagmi";
 import { formatUnits, parseUnits } from "viem";
 import { supabase } from "@/lib/supabase";
 import { TEDONG_MARKET_ABI } from "@/constants/tedong_market_abi";
@@ -113,10 +113,34 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   
   const { address, isConnected } = useAccount();
-  const { data: balanceData } = useBalance({ 
-    address, 
-    token: MOCK_USDC_ADDRESS as `0x${string}` 
+  
+  const { data: usdcData } = useReadContracts({
+    contracts: [
+      {
+        address: MOCK_USDC_ADDRESS as `0x${string}`,
+        abi: MOCK_USDC_ABI,
+        functionName: "balanceOf",
+        args: [address as `0x${string}`],
+      },
+      {
+        address: MOCK_USDC_ADDRESS as `0x${string}`,
+        abi: MOCK_USDC_ABI,
+        functionName: "decimals",
+      },
+      {
+        address: MOCK_USDC_ADDRESS as `0x${string}`,
+        abi: MOCK_USDC_ABI,
+        functionName: "symbol",
+      }
+    ],
+    query: {
+      enabled: !!address,
+    }
   });
+
+  const balanceValue = usdcData?.[0]?.result as bigint | undefined;
+  const balanceDecimals = usdcData?.[1]?.result as number | undefined;
+  const balanceSymbol = usdcData?.[2]?.result as string | undefined;
 
   const [marketData, setMarketData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -234,7 +258,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const winnerChoice = parseInt(marketData.winner as string) || 0; // 1 for A, 2 for B
 
   const estimated = stake ? (Number(stake) * 1.84).toFixed(2) : "0.00";
-  const displayBalance = balanceData ? `${parseFloat(formatUnits(balanceData.value, balanceData.decimals)).toFixed(4)} ${balanceData.symbol}` : "0.00";
+  const displayBalance = (balanceValue !== undefined && balanceDecimals !== undefined) 
+    ? `${parseFloat(formatUnits(balanceValue, balanceDecimals)).toFixed(4)} ${balanceSymbol || "USDC"}` 
+    : "0.00";
 
   return (
     <div style={{ minHeight: "100vh", background: "#0B0F1A", color: "#E2E8F0" }}>
