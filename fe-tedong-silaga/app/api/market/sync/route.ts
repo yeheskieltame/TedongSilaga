@@ -27,9 +27,28 @@ export async function GET() {
     // 3. Get existing markets from Supabase
     const { data: existingBase, error: fetchError } = await supabase
       .from("markets")
-      .select("market_address");
+      .select("market_address, buffalo_a_name, buffalo_b_name");
       
     if (fetchError) throw fetchError;
+    
+    // BACKWARD COMPATIBILITY: Ensure any existing buffalos in the markets table exist in the buffalo leaderboard
+    if (existingBase) {
+      for (const m of existingBase) {
+        for (const bName of [m.buffalo_a_name, m.buffalo_b_name]) {
+          if (!bName) continue;
+          const { data: existingBuffalo } = await supabase
+            .from("buffalo")
+            .select("id")
+            .ilike("buffalo_name", bName)
+            .single();
+            
+          if (!existingBuffalo) {
+            await supabase.from("buffalo").insert([{ buffalo_name: bName }]);
+            console.log(`Backward synced missing legacy buffalo: ${bName}`);
+          }
+        }
+      }
+    }
     
     // Create a Set of lowercase addresses for easy comparison
     const existingAddresses = new Set((existingBase || []).map(m => m.market_address.toLowerCase()));
@@ -64,6 +83,22 @@ export async function GET() {
               url_embed_buffalo_b: "",
             }
           ]);
+          
+        // Ensure buffalo names also exist in the dedicated buffalo leaderboard DB
+        const buffalosToEnsure = [buffaloIdA, buffaloIdB];
+        for (const bName of buffalosToEnsure) {
+          if (!bName) continue;
+          const { data: existingBuffalo } = await supabase
+            .from("buffalo")
+            .select("id")
+            .ilike("buffalo_name", bName)
+            .single();
+            
+          if (!existingBuffalo) {
+            await supabase.from("buffalo").insert([{ buffalo_name: bName }]);
+            console.log(`Synced missing buffalo payload to leaderboard: ${bName}`);
+          }
+        }
           
         if (!insertError) {
           syncedCount++;
