@@ -241,6 +241,63 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     functionName: "totalPoolB",
   });
 
+  // Fetch User Specific Market Data
+  const { data: userMarketData, refetch: refetchUserMarketData } = useReadContracts({
+    contracts: [
+      {
+        address: id as `0x${string}`,
+        abi: TEDONG_MARKET_ABI,
+        functionName: "claimed",
+        args: [address as `0x${string}`],
+      },
+      {
+        address: id as `0x${string}`,
+        abi: TEDONG_MARKET_ABI,
+        functionName: "getUserStake",
+        args: [address as `0x${string}`],
+      },
+    ],
+    query: {
+      enabled: !!address && !!id,
+    }
+  });
+
+  const hasClaimed = userMarketData?.[0]?.result as boolean | undefined;
+  const userStakes = userMarketData?.[1]?.result as [bigint, bigint] | undefined;
+  const userStakeA = userStakes ? parseFloat(formatUnits(userStakes[0], 6)) : 0;
+  const userStakeB = userStakes ? parseFloat(formatUnits(userStakes[1], 6)) : 0;
+
+  const handleClaim = async () => {
+    if (!isConnected) return;
+    setIsStaking(true);
+    setStatusMsg({ type: "loading", text: "Initiating Claim..." });
+
+    try {
+      const claimTxHash = await writeContractAsync({
+        address: id as `0x${string}`,
+        abi: TEDONG_MARKET_ABI,
+        functionName: "claimWinnings",
+      });
+
+      setStatusMsg({ type: "loading", text: "Waiting for claim confirmation..." });
+      await publicClient!.waitForTransactionReceipt({ hash: claimTxHash });
+
+      setStatusMsg({ type: "success", text: "Rewards claimed successfully!" });
+      refetchUserMarketData();
+      setTimeout(() => setStatusMsg({ type: "", text: "" }), 5000);
+    } catch (err: unknown) {
+      console.error(err);
+      let errMsg = "Claim failed";
+      if (err instanceof Error) {
+        errMsg = (err as { shortMessage?: string }).shortMessage || err.message;
+      }
+      setStatusMsg({ type: "error", text: errMsg });
+      setTimeout(() => setStatusMsg({ type: "", text: "" }), 5000);
+    } finally {
+      setIsStaking(false);
+    }
+  };
+
 
 
   if (loading) return <div style={{ minHeight: "100vh", background: "#0B0F1A", color: "#E2E8F0", padding: "100px", textAlign: "center" }}>Loading Market...</div>;
@@ -266,11 +323,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     <div style={{ minHeight: "100vh", background: "#0B0F1A", color: "#E2E8F0" }}>
       <Navbar />
 
-      <main style={{ paddingTop: "80px", paddingBottom: "6rem" }}>
+      <main style={{ paddingTop: "120px", paddingBottom: "6rem" }}>
         <div className="detail-container">
 
           {/* ── Breadcrumb ── */}
-          <div style={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.25rem 0 1.5rem" }}>
+          <div style={{ position: "relative", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.25rem 0 1.5rem" }}>
             <Link href="/markets" style={{
               display: "flex", alignItems: "center", gap: "6px",
               color: "#64748B", fontWeight: 600, fontSize: "0.8rem", textDecoration: "none",
@@ -512,6 +569,49 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       {isStaking ? "Processing..." : !isConnected ? "Connect Wallet" : !selectedBuffalo ? "Select Buffalo First" : !stake ? "Enter amount" : "Confirm Prediction →"}
                     </button>
                   </>
+                )}
+
+                {/* Claim Reward Button */}
+                {statusText === "Resolved" && isConnected && (
+                  <div style={{
+                    marginTop: "0.25rem",
+                    padding: "1.25rem",
+                    borderRadius: "16px",
+                    background: "rgba(74, 222, 128, 0.04)",
+                    border: "1px solid rgba(74, 222, 128, 0.15)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "1rem"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <h3 style={{ fontSize: "0.9rem", fontWeight: 800, color: "#4ADE80" }}>Claim Rewards</h3>
+                        <p style={{ fontSize: "0.7rem", color: "#94A3B8" }}>
+                          {hasClaimed ? "You have already claimed your rewards." : "Your prediction was correct! Claim your winnings."}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: "10px", fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>Your Total Stake</div>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 800, color: "#F1F5F9" }}>{(userStakeA + userStakeB).toLocaleString()} USDC</div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleClaim}
+                      disabled={hasClaimed || isStaking || (userStakeA === 0 && userStakeB === 0)}
+                      style={{
+                        width: "100%", padding: "0.85rem", borderRadius: "12px", border: "none",
+                        background: (hasClaimed || (userStakeA === 0 && userStakeB === 0)) ? "rgba(255,255,255,0.05)" : "linear-gradient(135deg, #22C55E, #16A34A)",
+                        color: (hasClaimed || (userStakeA === 0 && userStakeB === 0)) ? "#475569" : "#fff",
+                        fontSize: "0.85rem", fontWeight: 800,
+                        cursor: (hasClaimed || (userStakeA === 0 && userStakeB === 0) || isStaking) ? "not-allowed" : "pointer",
+                        transition: "all 0.2s",
+                        boxShadow: (hasClaimed || (userStakeA === 0 && userStakeB === 0)) ? "none" : "0 4px 12px rgba(34, 197, 150, 0.2)"
+                      }}
+                    >
+                      {isStaking ? "Processing..." : hasClaimed ? "Already Claimed" : (userStakeA === 0 && userStakeB === 0) ? "No Stake Found" : "Claim Winnings →"}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

@@ -184,7 +184,7 @@ function WalletModal({ onClose }: { onClose: () => void }) {
         )}
 
         <p style={{ fontSize: "11px", color: "#475569", textAlign: "center", lineHeight: 1.5 }}>
-          By connecting, you agree to the Arena's <br />
+          By connecting, you agree to the Arena&apos;s <br />
           <span style={{ textDecoration: "underline" }}>Terms of Service</span> and <span style={{ textDecoration: "underline" }}>Privacy Policy</span>
         </p>
       </div>
