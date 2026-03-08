@@ -16,25 +16,17 @@ const STATUS_COLORS: Record<string, { dot: string; text: string; bg: string }> =
 };
 
 // Sub-component to fetch and render dynamic market state
-function MarketDynamicData({ marketAddress }: { marketAddress: string }) {
+function MarketDynamicData({ marketAddress, initialStatus }: { marketAddress: string, initialStatus?: string }) {
   const { data: totalPoolData } = useReadContract({
     address: marketAddress as `0x${string}`,
     abi: TEDONG_MARKET_ABI,
     functionName: "getTotalPool",
   });
   
-  const { data: statusData } = useReadContract({
-    address: marketAddress as `0x${string}`,
-    abi: TEDONG_MARKET_ABI,
-    functionName: "status",
-  });
-
-  const pool = totalPoolData ? `${parseFloat(formatUnits(totalPoolData as bigint, 6)).toLocaleString()} USDC` : "0 USDC";
+  // Directly use Supabase DB status so UI is instantly synced and looks properly, without waiting for wallet/RPC connection
+  const statusText = initialStatus || "Open";
   
-  // Status mapping: 0 = Open, 1 = Locked, 2 = Resolved
-  let statusText = "Open";
-  if (statusData === 1) statusText = "Locked";
-  if (statusData === 2) statusText = "Resolved";
+  const pool = totalPoolData ? `${parseFloat(formatUnits(totalPoolData as bigint, 6)).toLocaleString()} USDC` : "0 USDC";
   
   const sc = STATUS_COLORS[statusText] || STATUS_COLORS["Open"];
 
@@ -306,7 +298,7 @@ export default function MarketsPage() {
                     <div style={{ fontSize: "13px", color: "#94A3B8" }}>{m.arena_name}</div>
                     
                     {/* Dynamic Pool & Status from Subcomponent */}
-                    <MarketDynamicData marketAddress={m.market_address} />
+                    <MarketDynamicData marketAddress={m.market_address} initialStatus={m.status} />
 
                   </div>
                 </Link>
@@ -333,7 +325,7 @@ export default function MarketsPage() {
                   }}>
                     {/* Top row: Status + Pool */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-                      <MarketDynamicData marketAddress={m.market_address} />
+                      <MarketDynamicData marketAddress={m.market_address} initialStatus={m.status} />
                     </div>
 
                     {/* VS Row */}

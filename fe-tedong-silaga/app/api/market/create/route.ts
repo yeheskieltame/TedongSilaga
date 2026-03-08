@@ -38,6 +38,8 @@ export async function POST(request: Request) {
           embed_poster,
           url_embed_buffalo_a,
           url_embed_buffalo_b,
+          status: "Open",
+          winner: 0,
         },
       ])
       .select(); // Mengembalikan data yang berhasil di-insert

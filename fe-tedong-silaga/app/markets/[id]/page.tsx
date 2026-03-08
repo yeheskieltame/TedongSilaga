@@ -142,12 +142,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     fetchMarket();
   }, [id]);
 
-  // Wagmi Contract Reads
-  const { data: statusData } = useReadContract({
-    address: id as `0x${string}`,
-    abi: TEDONG_MARKET_ABI,
-    functionName: "status",
-  });
+  // Wagmi Contract Reads for Prize Pools
+  // Status and winner are now completely sourced from Supabase for instant sync!
 
   const { data: poolDataA } = useReadContract({
     address: id as `0x${string}`,
@@ -161,18 +157,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     functionName: "totalPoolB",
   });
 
-  const { data: winnerData } = useReadContract({
-    address: id as `0x${string}`,
-    abi: TEDONG_MARKET_ABI,
-    functionName: "winner",
-  });
+
 
   if (loading) return <div style={{ minHeight: "100vh", background: "#0B0F1A", color: "#E2E8F0", padding: "100px", textAlign: "center" }}>Loading Market...</div>;
   if (!marketData) return <div style={{ minHeight: "100vh", background: "#0B0F1A", color: "#E2E8F0", padding: "100px", textAlign: "center" }}>Market not found!</div>;
 
-  let statusText = "Open";
-  if (statusData === 1) statusText = "Locked";
-  if (statusData === 2) statusText = "Resolved";
+  const statusText = (marketData.status as string) || "Open";
   
   const sc = STATUS_CONFIG[statusText] || STATUS_CONFIG["Open"];
   const isOpen = statusText === "Open";
@@ -181,7 +171,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const poolB = poolDataB ? parseFloat(formatUnits(poolDataB as bigint, 6)) : 0;
   const totalPool = poolA + poolB;
 
-  const winnerChoice = winnerData as number; // 1 for A, 2 for B
+  const winnerChoice = parseInt(marketData.winner as string) || 0; // 1 for A, 2 for B
 
   const estimated = stake ? (Number(stake) * 1.84).toFixed(2) : "0.00";
   const displayBalance = balanceData ? `${parseFloat(formatUnits(balanceData.value, balanceData.decimals)).toFixed(4)} ${balanceData.symbol}` : "0.00";
