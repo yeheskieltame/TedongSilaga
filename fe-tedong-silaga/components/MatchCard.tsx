@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Users, Info, ArrowRight, Lock, CheckCircle } from "lucide-react";
+import { Users, ArrowRight, Lock, CheckCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 interface MatchCardProps {

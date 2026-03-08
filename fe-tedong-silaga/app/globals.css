@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@theme inline {
+@theme {
   /* ── Core Brand Colors ── */
   --color-bg-base: #020617;
   --color-bg-dark: #030b1a;

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { UserCheck, ShieldCheck, Flame, Trophy, TrendingUp, History, ExternalLink, ChevronRight, CheckCircle, Clock } from "lucide-react";
+import { ShieldCheck, Flame, Trophy, TrendingUp, History, CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
 

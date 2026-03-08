@@ -41,8 +41,9 @@ function DesktopNavbar() {
       className="desktop-nav-only"
       style={{
         position: "fixed",
-        left: "10%",
-        right: "10%",
+        left: 0,
+        right: 0,
+        margin: "0 auto",
         top: "1rem",
         zIndex: 100,
         width: "calc(100% - 2rem)",
@@ -82,18 +83,15 @@ function DesktopNavbar() {
         >
           <div
             style={{
-              width: "32px",
-              height: "32px",
-              background: "linear-gradient(135deg, #6366F1, #4F6BFF)",
-              borderRadius: "10px",
+              width: "36px",
+              height: "36px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "1rem",
-              boxShadow: "0 0 16px rgba(99,102,241,0.35)",
             }}
           >
-            🐃
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Tedong Silaga" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           </div>
           <span
             style={{
@@ -404,18 +402,15 @@ function MobileTopBar() {
         >
           <div
             style={{
-              width: "28px",
-              height: "28px",
-              background: "linear-gradient(135deg, #6366F1, #4F6BFF)",
-              borderRadius: "8px",
+              width: "32px",
+              height: "32px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "0.85rem",
-              boxShadow: "0 0 12px rgba(99,102,241,0.3)",
             }}
           >
-            🐃
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Tedong Silaga" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           </div>
           <span
             style={{

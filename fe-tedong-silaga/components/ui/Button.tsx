@@ -53,7 +53,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           sizeStyles[size],
           className
         )}
-        {...(props as any)}
+        {...(props as React.ComponentProps<typeof motion.button>)}
       >
         {children}
       </motion.button>
