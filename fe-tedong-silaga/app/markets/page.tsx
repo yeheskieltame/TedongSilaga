@@ -58,18 +58,33 @@ export default function MarketsPage() {
   const isAdmin = address?.toLowerCase() === "0x7c1f9bcdea7c160e4763d6da06399a7d363a9e22";
 
   const [markets, setMarkets] = useState<Record<string, unknown>[]>([]);
+  const [buffaloMap, setBuffaloMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All Markets");
 
   useEffect(() => {
     async function fetchFromSupabase() {
-      const { data, error } = await supabase
-        .from("markets")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const [
+        { data: marketsData, error: marketsError },
+        { data: buffaloData, error: buffaloError }
+      ] = await Promise.all([
+        supabase.from("markets").select("*").order("created_at", { ascending: false }),
+        supabase.from("buffalo").select("buffalo_name, url_embed")
+      ]);
       
-      if (!error) {
-        setMarkets(data || []);
+      if (!marketsError) {
+        setMarkets(marketsData || []);
+      }
+
+      if (!buffaloError && buffaloData) {
+         const bMap: Record<string, string> = {};
+         buffaloData.forEach(b => {
+             if (b.buffalo_name && b.url_embed) {
+                 bMap[b.buffalo_name] = b.url_embed;
+             }
+         });
+         setBuffaloMap(bMap);
       }
       setLoading(false);
     }
@@ -94,14 +109,17 @@ export default function MarketsPage() {
     processMarkets();
   }, []);
 
-  // For now, filtering only by search text since status is dynamic in contract
+  // Filtering by search text and status
   const filtered = markets.filter(m => {
     const marketObj = m as Record<string, string>;
     const matchesSearch = search === "" ||
       (marketObj.buffalo_a_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
       (marketObj.buffalo_b_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
       (marketObj.arena_name?.toLowerCase() || "").includes(search.toLowerCase());
-    return matchesSearch;
+      
+    const matchesStatus = statusFilter === "All Markets" || marketObj.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
   });
 
   return (
@@ -184,18 +202,23 @@ export default function MarketsPage() {
             {/* Filter pills */}
             <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
               <SlidersHorizontal size={14} style={{ color: "#475569", marginRight: "2px" }} />
-              <button
-                style={{
-                  padding: "4px 12px",
-                  borderRadius: "999px",
-                  border: "1px solid rgba(79,107,255,0.5)",
-                  background: "rgba(79,107,255,0.12)",
-                  color: "#818CF8",
-                  fontWeight: 700, fontSize: "12px", cursor: "pointer",
-                }}
-              >
-                All Markets
-              </button>
+              {(["All Markets", "Open", "Locked", "Resolved"] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setStatusFilter(tab)}
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: "999px",
+                    border: statusFilter === tab ? "1px solid rgba(79,107,255,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                    background: statusFilter === tab ? "rgba(79,107,255,0.12)" : "transparent",
+                    color: statusFilter === tab ? "#818CF8" : "#94A3B8",
+                    fontWeight: 700, fontSize: "12px", cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
 
             {/* Search */}
@@ -227,18 +250,18 @@ export default function MarketsPage() {
             {/* Table Head */}
             <div style={{
               display: "grid",
-              // Adjusted grid columns since we removed Players and Winrate
-              gridTemplateColumns: "2.5fr 2.5fr 1.5fr 1.5fr 1fr",
+              gridTemplateColumns: "1.5fr 3.5fr 1.5fr 1fr",
               padding: "0.85rem 1.5rem",
               borderBottom: "1px solid rgba(255,255,255,0.06)",
               background: "rgba(255,255,255,0.02)",
             }}>
-              {["Buffalo A", "Buffalo B", "Arena", "Prize Pool", "Status"].map((col, i) => (
+              {["Event Name", "Buffalo Match", "Prize Pool", "Status"].map((col, i) => (
                 <div key={i} style={{
                   fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em",
-                  color: "#475569", display: "flex", alignItems: "center", gap: "4px"
+                  color: "#475569", display: "flex", alignItems: "center", gap: "4px",
+                  justifyContent: col === "Prize Pool" || col === "Status" ? "flex-start" : "flex-start",
                 }}>
-                  {col} {i === 3 && <ChevronDown size={11} />}
+                  {col} {col === "Prize Pool" && <ChevronDown size={11} />}
                 </div>
               ))}
             </div>
@@ -260,7 +283,7 @@ export default function MarketsPage() {
                     style={{
                       display: "grid",
                       // Matching grid template
-                      gridTemplateColumns: "2.5fr 2.5fr 1.5fr 1.5fr 1fr",
+                      gridTemplateColumns: "1.5fr 3.5fr 1.5fr 1fr",
                       padding: "1.1rem 1.5rem",
                       borderBottom: idx < filtered.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
                       alignItems: "center",
@@ -270,32 +293,40 @@ export default function MarketsPage() {
                     onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.025)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                   >
-                    {/* Buffalo A */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <div style={{
-                        width: "34px", height: "34px", borderRadius: "50%",
-                        background: "linear-gradient(135deg, #1E293B, #0F172A)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px",
-                      }}>🐃</div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: "14px", color: "#F1F5F9" }}>{m.buffalo_a_name}</div>
+                    {/* Event Name */}
+                    <div style={{ paddingRight: "1rem" }}>
+                      <div style={{ fontWeight: 800, fontSize: "15px", color: "#F8FAFC", marginBottom: "4px" }}>{m.event_name}</div>
+                      <div style={{ fontSize: "12px", color: "#94A3B8", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "#4F6BFF" }} />
+                        {m.arena_name}
                       </div>
                     </div>
-                    {/* Buffalo B */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <div style={{
-                        width: "34px", height: "34px", borderRadius: "50%",
-                        background: "linear-gradient(135deg, #1E293B, #0F172A)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px",
-                      }}>🐃</div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: "14px", color: "#F1F5F9" }}>{m.buffalo_b_name}</div>
+
+                    {/* Buffalo Match (2 Images + VS) */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "16px", padding: "10px 0" }}>
+                      {/* Buffalo A */}
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100px" }}>
+                        {buffaloMap[m.buffalo_a_name] ? (
+                          <img src={buffaloMap[m.buffalo_a_name]} alt={m.buffalo_a_name} style={{ width: "70px", height: "70px", borderRadius: "14px", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }} />
+                        ) : (
+                          <div style={{ width: "70px", height: "70px", borderRadius: "14px", background: "#1E293B", border: "2px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>🐃</div>
+                        )}
+                        <div style={{ fontWeight: 800, fontSize: "13px", color: "#F1F5F9", marginTop: "8px", textAlign: "center", lineHeight: 1.1 }}>{m.buffalo_a_name}</div>
+                      </div>
+
+                      {/* VS Image */}
+                      <img src="/vs.png" alt="VS" style={{ width: "45px", objectFit: "contain", flexShrink: 0, marginTop: "-15px" }} />
+
+                      {/* Buffalo B */}
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100px" }}>
+                        {buffaloMap[m.buffalo_b_name] ? (
+                          <img src={buffaloMap[m.buffalo_b_name]} alt={m.buffalo_b_name} style={{ width: "70px", height: "70px", borderRadius: "14px", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }} />
+                        ) : (
+                          <div style={{ width: "70px", height: "70px", borderRadius: "14px", background: "#1E293B", border: "2px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>🐃</div>
+                        )}
+                        <div style={{ fontWeight: 800, fontSize: "13px", color: "#F1F5F9", marginTop: "8px", textAlign: "center", lineHeight: 1.1 }}>{m.buffalo_b_name}</div>
                       </div>
                     </div>
-                    {/* Arena */}
-                    <div style={{ fontSize: "13px", color: "#94A3B8" }}>{m.arena_name}</div>
                     
                     {/* Dynamic Pool & Status from Subcomponent */}
                     <MarketDynamicData marketAddress={m.market_address} initialStatus={m.status} />
@@ -328,41 +359,42 @@ export default function MarketsPage() {
                       <MarketDynamicData marketAddress={m.market_address} initialStatus={m.status} />
                     </div>
 
+                    {/* Event Name */}
+                    <div style={{ marginBottom: "1rem", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "0.5rem" }}>
+                       <div style={{ fontWeight: 800, fontSize: "14px", color: "#F8FAFC" }}>{m.event_name}</div>
+                    </div>
                     {/* VS Row */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px" }}>
                       {/* Buffalo A */}
-                      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                        <div style={{
-                          width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
-                          background: "linear-gradient(135deg, #1E293B, #0F172A)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px",
-                        }}>🐃</div>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "#F1F5F9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.buffalo_a_name}</div>
-                        </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
+                        {buffaloMap[m.buffalo_a_name] ? (
+                          <img src={buffaloMap[m.buffalo_a_name]} alt={m.buffalo_a_name} style={{ width: "60px", height: "60px", borderRadius: "12px", objectFit: "cover", border: "1px solid rgba(255,255,255,0.1)" }} />
+                        ) : (
+                          <div style={{ width: "60px", height: "60px", borderRadius: "12px", background: "#1E293B", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>🐃</div>
+                        )}
+                        <div style={{ fontWeight: 800, fontSize: "0.75rem", color: "#F1F5F9", marginTop: "6px", textAlign: "center", lineHeight: 1.1 }}>{m.buffalo_a_name}</div>
                       </div>
 
                       {/* VS */}
-                      <span style={{ fontSize: "0.65rem", fontWeight: 800, color: "#475569", flexShrink: 0, padding: "0 2px" }}>VS</span>
+                      <img src="/vs.png" alt="VS" style={{ width: "35px", objectFit: "contain", flexShrink: 0, marginTop: "-15px" }} />
 
                       {/* Buffalo B */}
-                      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "8px", justifyContent: "flex-end", minWidth: 0 }}>
-                        <div style={{ minWidth: 0, textAlign: "right" }}>
-                          <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "#F1F5F9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.buffalo_b_name}</div>
-                        </div>
-                        <div style={{
-                          width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
-                          background: "linear-gradient(135deg, #1E293B, #0F172A)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px",
-                        }}>🐃</div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
+                        {buffaloMap[m.buffalo_b_name] ? (
+                          <img src={buffaloMap[m.buffalo_b_name]} alt={m.buffalo_b_name} style={{ width: "60px", height: "60px", borderRadius: "12px", objectFit: "cover", border: "1px solid rgba(255,255,255,0.1)" }} />
+                        ) : (
+                          <div style={{ width: "60px", height: "60px", borderRadius: "12px", background: "#1E293B", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>🐃</div>
+                        )}
+                        <div style={{ fontWeight: 800, fontSize: "0.75rem", color: "#F1F5F9", marginTop: "6px", textAlign: "center", lineHeight: 1.1 }}>{m.buffalo_b_name}</div>
                       </div>
                     </div>
 
                     {/* Bottom row: arena, chevron */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.6rem", paddingTop: "0.6rem", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                      <span style={{ fontSize: "0.7rem", color: "#64748B" }}>{m.arena_name}</span>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.8rem", paddingTop: "0.8rem", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                      <div style={{ fontSize: "0.7rem", color: "#94A3B8", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ display: "inline-block", width: "5px", height: "5px", borderRadius: "50%", background: "#4F6BFF" }} />
+                        {m.arena_name}
+                      </div>
                       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                         <ChevronRight size={14} color="#475569" />
                       </div>

@@ -185,10 +185,10 @@ export default function MatchCarousel({ scrollYProgress }: { scrollYProgress: Mo
           buffaloMap[b.buffalo_name] = b.url_embed || "";
         });
 
-        const enhancedMarkets = (marketsData || []).map((m: any) => ({
+        const enhancedMarkets = (marketsData || []).map((m: Record<string, unknown>) => ({
           ...m,
-          url_embed_buffalo_a: buffaloMap[m.buffalo_a_name] || m.url_embed_buffalo_a,
-          url_embed_buffalo_b: buffaloMap[m.buffalo_b_name] || m.url_embed_buffalo_b,
+          url_embed_buffalo_a: buffaloMap[m.buffalo_a_name as string] || m.url_embed_buffalo_a,
+          url_embed_buffalo_b: buffaloMap[m.buffalo_b_name as string] || m.url_embed_buffalo_b,
         }));
 
         setMarkets(enhancedMarkets);
