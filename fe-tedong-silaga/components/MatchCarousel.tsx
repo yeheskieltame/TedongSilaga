@@ -23,17 +23,10 @@ const CarouselMatchCard = ({ match }: { match: Record<string, unknown> }) => {
     functionName: "getTotalPool",
   });
   
-  const { data: statusData } = useReadContract({
-    address: marketAddress as `0x${string}`,
-    abi: TEDONG_MARKET_ABI,
-    functionName: "status",
-  });
-
   const pool = totalPoolData ? `${parseFloat(formatUnits(totalPoolData as bigint, 6)).toLocaleString()} USDC` : "0 USDC";
   
-  let statusText = "Open";
-  if (statusData === 1) statusText = "Locked";
-  if (statusData === 2) statusText = "Resolved";
+  // Directly use Supabase string status
+  const statusText = (match.status as string) || "Open";
   
   const sc = STATUS_COLORS[statusText] || STATUS_COLORS["Open"];
 
