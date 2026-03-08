@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import WalletButton from "@/components/WalletButton";
 import FaucetButton from "@/components/FaucetButton";
+import MusicToggleButton from "@/components/MusicToggleButton";
 
 // ── Menu items ──────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
@@ -37,7 +38,7 @@ function DesktopNavbar() {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 200, damping: 28, delay: 0.1 }}
-      className="desktop-nav-only"
+      className="hidden md:flex"
       style={{
         position: "fixed",
         top: 0,
@@ -45,67 +46,68 @@ function DesktopNavbar() {
         right: 0,
         zIndex: 100,
         padding: "1.25rem 2rem",
-        display: "grid",
-        gridTemplateColumns: "1fr auto 1fr",
+        justifyContent: "center",
         alignItems: "center",
-        background: isScrolled
-          ? "rgba(2, 6, 23, 0.85)"
-          : "transparent",
-        backdropFilter: isScrolled ? "blur(12px)" : "none",
-        borderBottom: isScrolled ? "1px solid rgba(255,255,255,0.06)" : "none",
+        background: "transparent",
+        pointerEvents: "none",
         transition: "all 0.4s ease",
       }}
     >
-      {/* Logo — left */}
-      <Link
-        href="/"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-          textDecoration: "none",
-          justifySelf: "start",
-        }}
-      >
-        <div
-          style={{
-            width: "36px",
-            height: "36px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Tedong Silaga" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-        </div>
-        <span
-          style={{
-            fontSize: "1.05rem",
-            fontWeight: 800,
-            color: "#F9FAFB",
-            fontFamily: "var(--font-heading)",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Tedong Silaga
-        </span>
-      </Link>
-
-      {/* Nav Links — center pill */}
+      {/* Nav Links — Everything inside a central pill */}
       <nav
         style={{
           display: "flex",
           alignItems: "center",
           gap: "0.25rem",
-          padding: "0.25rem 0.5rem",
+          padding: "0.5rem",
           borderRadius: "9999px",
-          background: "rgba(255, 255, 255, 0.03)",
+          background: isScrolled ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.03)",
           border: "1px solid rgba(255, 255, 255, 0.08)",
           backdropFilter: "blur(12px)",
-          justifySelf: "center",
+          pointerEvents: "auto",
+          transition: "all 0.3s ease",
+          boxShadow: isScrolled ? "0 4px 30px rgba(0, 0, 0, 0.1)" : "none",
         }}
       >
+        {/* Logo — left inside pill */}
+        <Link
+          href="/"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            textDecoration: "none",
+            padding: "0 0.75rem",
+          }}
+        >
+          <div
+            style={{
+              width: "28px",
+              height: "28px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Tedong Silaga" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          </div>
+          <span
+            style={{
+              fontSize: "1rem",
+              fontWeight: 800,
+              color: "#F9FAFB",
+              fontFamily: "var(--font-heading)",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Tedong Silaga
+          </span>
+        </Link>
+
+        {/* Separator */}
+        <div style={{ width: "1px", height: "18px", background: "rgba(255, 255, 255, 0.15)", margin: "0 8px" }} />
+
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           const Icon = item.icon;
@@ -161,13 +163,15 @@ function DesktopNavbar() {
             </Link>
           );
         })}
+        
         <div style={{ width: "1px", height: "18px", background: "rgba(255, 255, 255, 0.15)", margin: "0 4px" }} />
         <FaucetButton />
         <WalletButton />
-      </nav>
 
-      {/* Empty div to preserve exactly perfectly centered CSS grid layout */}
-      <div></div>
+        {/* Separator / Music button inside pill */}
+        <div style={{ width: "1px", height: "18px", background: "rgba(255, 255, 255, 0.15)", margin: "0 4px" }} />
+        <MusicToggleButton />
+      </nav>
     </motion.header>
   );
 }

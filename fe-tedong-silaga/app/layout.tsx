@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { clsx } from "clsx";
 import "./globals.css";
 import Web3Provider from "@/components/Web3Provider";
+import AudioProvider from "@/components/AudioProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -55,7 +56,9 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Web3Provider>
-          {children}
+          <AudioProvider>
+            {children}
+          </AudioProvider>
         </Web3Provider>
       </body>
     </html>
