@@ -9,56 +9,53 @@
 
 </div>
 
-# Tedong Silaga — CRE Workflow
+# Tedong Silaga CRE Workflow
 
-Chainlink CRE workflow that automates on-chain settlement of the Tedong Silaga prediction market. Detects `MarketLocked` events on World Chain, scrapes real Facebook posts via Apify, determines the winner using Google Gemini AI, and writes the result on-chain through the CRE Forwarder.
+Chainlink CRE workflow that automates on-chain settlement of the Tedong Silaga prediction market. Detects MarketLocked events on World Chain, scrapes real Facebook posts via Apify, determines the winner using Google Gemini AI, and writes the result on-chain through the CRE Forwarder.
 
 ## Key Features
 
-| Feature                    | Description                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------------- |
-| **EVM Log Trigger**        | Automatically listens for `MarketLocked(address, string)` event on World Chain     |
-| **EVM Read**               | Reads buffalo names and event data from the `TedongMarket` contract                |
-| **Facebook Scraping**      | Retrieves real community posts from a Facebook Page via [Apify](https://apify.com) |
-| **AI-Powered Judgment**    | Google Gemini analyzes post content to determine the winner (1, 2, or 3)           |
-| **EVM Write (CRE Report)** | Settles the market on-chain via `onReport()` + CRE Forwarder pattern (ERC-165)     |
+| Feature           | Description                                                              |
+| ----------------- | ------------------------------------------------------------------------ |
+| EVM Log Trigger   | Automatically listens for MarketLocked event on World Chain              |
+| EVM Read          | Reads buffalo names and event data from the TedongMarket contract        |
+| Facebook Scraping | Retrieves real community posts from a Facebook Page via Apify            |
+| AI Judgment       | Google Gemini analyzes post content to determine the winner (1, 2, or 3) |
+| EVM Write         | Settles the market on-chain via onReport and CRE Forwarder pattern       |
+| API Server        | Local API server handling frontend requests to trigger CRE workflow      |
 
 ## Workflow Flow
 
 ```mermaid
 flowchart TD
-    A["Step 1: MarketLocked event detected (Log Trigger)"] --> B["Step 2: EVM Read buffalo names from contract"]
+    A["Step 1: MarketLocked event detected"] --> B["Step 2: EVM Read buffalo names from contract"]
     B --> C["Step 3: Scrape Facebook Page via Apify"]
     C --> D["Step 4: Gemini AI analyzes post text"]
-    D --> E{"Winner?"}
+    D --> E{"Winner Result"}
     E -->|1| F["Buffalo A wins"]
     E -->|2| G["Buffalo B wins"]
-    E -->|3| H["Draw / Cancelled"]
-    F --> I["Step 5: runtime.report() → Forwarder → onReport()"]
+    E -->|3| H["Draw or Cancelled"]
+    F --> I["Step 5: runtime.report to Forwarder to onReport"]
     G --> I
     H --> I
-    I --> J["Market Resolved On-Chain ✅"]
+    I --> J["Market Resolved On-Chain"]
 ```
 
 ## Project Structure
 
-```
-tedong-workflow/
-├── my-workflow/
-│   ├── main.ts              # Workflow entry: trigger, EVM read/write, orchestration
-│   ├── facebook.ts          # Apify integration: scrape Facebook Page posts
-│   ├── gemini.ts            # Gemini AI integration: analyze post → determine winner
-│   ├── config.staging.json  # Staging config (World Chain Sepolia)
-│   ├── config.production.json
-│   └── workflow.yaml        # CRE workflow settings
-├── contracts/
-│   └── abi/
-│       ├── TedongMarket.ts  # Full ABI (onReport, stake, lockMarket, etc.)
-│       └── index.ts         # Re-export
-├── project.yaml             # CRE project config + RPC endpoints
-├── secrets.yaml             # Secret names (GEMINI_API_KEY, APIFY_TOKEN)
-└── .env                     # Secret values (DO NOT COMMIT)
-```
+| File / Folder                      | Purpose                                                    |
+| ---------------------------------- | ---------------------------------------------------------- |
+| my-workflow/main.ts                | Workflow logic (trigger, EVM read/write, orchestration)    |
+| my-workflow/facebook.ts            | Apify integration to scrape Facebook Page posts            |
+| my-workflow/gemini.ts              | Gemini AI integration to analyze post and determine winner |
+| my-workflow/config.staging.json    | Staging environment configuration                          |
+| my-workflow/config.production.json | Production environment configuration                       |
+| my-workflow/workflow.yaml          | CRE workflow settings                                      |
+| contracts/abi/                     | Contract ABIs including TedongMarket                       |
+| project.yaml                       | CRE project configuration and RPC endpoints                |
+| secrets.yaml                       | Secret variable declarations                               |
+| .env                               | Environment variables                                      |
+| server.ts                          | Bun API server to seamlessly trigger the workflow          |
 
 ## Configuration
 
@@ -75,24 +72,26 @@ tedong-workflow/
 }
 ```
 
-| Field               | Description                                       |
-| ------------------- | ------------------------------------------------- |
-| `geminiModel`       | Gemini model name (must support `thinkingConfig`) |
-| `chainSelectorName` | CRE chain identifier for World Chain              |
-| `marketAddress`     | MarketFactory contract address                    |
-| `gasLimit`          | Gas limit for on-chain write                      |
-| `facebookPageId`    | Facebook Page numeric ID to scrape                |
-| `apifyActorId`      | Apify actor ID for Facebook page scraper          |
+| Field             | Description                              |
+| ----------------- | ---------------------------------------- |
+| geminiModel       | Gemini model name                        |
+| chainSelectorName | CRE chain identifier for World Chain     |
+| marketAddress     | MarketFactory contract address           |
+| gasLimit          | Gas limit for on-chain write             |
+| facebookPageId    | Facebook Page numeric ID to scrape       |
+| apifyActorId      | Apify actor ID for Facebook page scraper |
 
-### Secrets (.env)
+### Secrets Configuration
 
 ```env
-CRE_ETH_PRIVATE_KEY=0x...        # Resolver wallet private key
-GEMINI_API_KEY_VAR=AIza...        # Google Gemini API key
-APIFY_TOKEN_VAR=apify_api_...     # Apify API token
+CRE_ETH_PRIVATE_KEY=0x...
+GEMINI_API_KEY_VAR=AIza...
+APIFY_TOKEN_VAR=apify_api_...
 ```
 
-## Quick Start
+## Guide to Running the Workflow API Server
+
+To make it simple and perfectly aligned with the frontend structure, you only need to run the bundled server to process resolutions.
 
 ### 1. Install Dependencies
 
@@ -100,65 +99,64 @@ APIFY_TOKEN_VAR=apify_api_...     # Apify API token
 bun install --cwd ./my-workflow
 ```
 
-### 2. Configure Secrets
+### 2. Configure Environment Variables
 
-Copy and fill `.env`:
+Create and populate the `.env` file:
 
 ```bash
 cp .env.example .env
-# Set CRE_ETH_PRIVATE_KEY, GEMINI_API_KEY_VAR, APIFY_TOKEN_VAR
 ```
 
-### 3. Post Result on Facebook
+Ensure you have set valid values for `CRE_ETH_PRIVATE_KEY`, `GEMINI_API_KEY_VAR`, and `APIFY_TOKEN_VAR`.
 
-Post on the configured Facebook Page with buffalo names as keywords:
+### 3. Start the API Server
 
-```
-📢 Hasil Tedong Silaga: championfallo vs bentok
-Pertandingan hari ini di acara silagaArena.
-Pemenang: championfallo menang telak setelah 15 menit!
-#TedongSilaga #AduKerbau
-```
-
-### 4. Lock the Market On-Chain
+Run the `server.ts` file. This starts a local API on port `8081` which the frontend uses to request market resolution via CRE.
 
 ```bash
-# Via Foundry (or via frontend)
-cast send $MARKET_ADDRESS "lockMarket()" --rpc-url $RPC_URL --private-key $PRIVATE_KEY
+bun run server.ts
 ```
 
-### 5. Simulate
+### 4. Trigger Market Resolution
+
+If testing manually (without the frontend), mock a facebook post for the event:
+
+```text
+Hasil Tedong Silaga: buffalo_A vs buffalo_B
+Pemenang: buffalo_A menang telak setelah 15 menit!
+#TedongSilaga
+```
+
+Then simulate the frontend trigger using curl:
 
 ```bash
-cre workflow simulate my-workflow --broadcast
+curl -X POST http://localhost:8081/api/resolve \
+  -H "Content-Type: application/json" \
+  -d '{"marketAddress":"0x...","tx_locked_hash":"0x..."}'
 ```
 
-Expected output:
+Expected output in the server console:
 
-```
+```text
 [Step 1] MarketLocked event detected
-[Step 2] Buffalo A: championfallo, Buffalo B: bentok
+[Step 2] Buffalo A: buffalo_A, Buffalo B: buffalo_B
 [Step 3] Found 3 Facebook posts
-[Step 4] AI Result: 1 (championfallo)
+[Step 4] AI Result: 1 (buffalo_A)
 [Step 5] Settlement successful: 0x...
 === Resolution Complete ===
 ```
 
-### 6. Deploy to CRE DON
-
-```bash
-cre workflow deploy my-workflow
-```
-
 ## External Services
 
-| Service                                      | Purpose                | Free Tier           |
-| -------------------------------------------- | ---------------------- | ------------------- |
-| [Apify](https://apify.com)                   | Facebook Page scraper  | $5/month credit     |
-| [Google Gemini](https://aistudio.google.com) | AI buffalo fight judge | Free tier available |
-| [Alchemy](https://alchemy.com)               | World Chain RPC        | Free tier available |
+| Service       | Purpose                |
+| ------------- | ---------------------- |
+| Apify         | Facebook Page scraper  |
+| Google Gemini | AI buffalo fight judge |
+| Alchemy       | World Chain RPC        |
 
-## Related
+## Related Resources
 
-- **[Smart Contracts README](../../SmartContracts-TedongSilaga/README.md)** — Full contract documentation
-- **[Product Requirements Document](../../PRD.md)** — PRD
+| Document        | Link                                        |
+| --------------- | ------------------------------------------- |
+| Smart Contracts | ../../SmartContracts-TedongSilaga/README.md |
+| PRD             | ../../PRD.md                                |

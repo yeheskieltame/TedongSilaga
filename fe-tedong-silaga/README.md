@@ -1,62 +1,78 @@
-# 🐃 Tedong Silaga Arena
-### The Highlands' First Premium Prediction Market on World Chain
+# Tedong Silaga Arena Frontend
 
-Tedong Silaga Arena is a high-end, cinematic Web3 landing page for a GameFi prediction arena centered around traditional Toraja buffalo competitions. Built on **World Chain**, it merges ancient cultural heritage with cutting-edge blockchain technology to create a professional, immersive, and transparent prediction experience.
+**Live APP**: [https://tedong.xyz/](https://tedong.xyz/)
 
----
+Tedong Silaga Arena is a Web3 landing page and interface for a GameFi prediction arena centered around traditional Toraja buffalo competitions. Built on World Chain, it merges ancient cultural heritage with blockchain technology to create a professional, immersive, and transparent prediction experience.
 
-## ✨ Features
+## Tech Stack
 
-- **Cinematic Scroll Experience**: A 650vh-driven 3D journey using Framer Motion and React Three Fiber.
-- **Interactive WebGL Background**: A dynamic particle sphere reacting to mouse movement and scroll progress.
-- **Real-time Arena Markets**: Synchronized prediction pools with glassmorphism UI for live data display.
-- **Premium Dark UI**: Styled with TailwindCSS using a custom "World Chain" aesthetic (Midnight Slate & Electric Blue).
-- **Responsive 3D Design**: Optimized WebGL performance with high-performance power preference.
+| Technology | Purpose |
+|---|---|
+| Next.js 14 | Core App Router framework |
+| TailwindCSS | Styling and dark UI theme |
+| Framer Motion | Scroll-driven animations |
+| React Three Fiber | 3D WebGL ecosystem |
+| Supabase | Database and state sync |
+| Wagmi & Viem | Wallet connection and EVM interaction |
 
----
+## Application Routes and Pages
 
-## 🛠️ Tech Stack
+| Route / Page | Description | Core Features |
+|---|---|---|
+| / | Home Landing Page | Cinematic 650vh scroll experience, interactive WebGL particle background, introduction to mechanics. |
+| /markets | Arena Markets | Displays all active, locked, and resolved prediction markets. Includes search and filtering by status. |
+| /markets/[id] | Market Detail | Specific match prediction where users can stake USDC on their chosen buffalo and track live odds. |
+| /leaderboard | Global Leaderboard | Ranks the top champion buffaloes based on total wins and winning pools generated. Podium display for top 3. |
+| /action | Testing Action Panel | Dev/Jury testing page to easily simulate Lock, Resolve (triggers CRE workflow), and Claim functions. |
+| /admin | Admin Dashboard | Dashboard for the protocol administrator to create new prediction markets and publish them to World Chain. |
 
-- **Core**: [Next.js 14](https://nextjs.org/) (App Router)
-- **Styling**: [TailwindCSS](https://tailwindcss.com/)
-- **Animation**: [Framer Motion](https://www.framer.com/motion/)
-- **3D Engine**: [React Three Fiber](https://r3f.docs.pmnd.rs/) & [Three.js](https://threejs.org/)
-- **Shaders**: Custom GLSL for performance-driven particle effects.
-- **Icons**: [Lucide React](https://lucide.dev/)
+## Guide to Running the Frontend Server
 
----
+To run the frontend Next.js application, follow these steps:
 
-## 🚀 Getting Started
+### 1. Install Dependencies
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/your-username/fe-tedong-silaga.git
-   cd fe-tedong-silaga
-   ```
+Open your terminal in the `fe-tedong-silaga` directory and install the required packages.
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+```
 
-3. **Run the development server**:
-   ```bash
-   npm run dev
-   ```
+### 2. Configure Environment Variables
 
-4. **Visit the Arena**:
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+Create and populate the `.env.local` file with the necessary API keys and contract addresses.
 
----
+```bash
+cp .env.example .env.local
+```
 
-## 📸 Stage Journey
+Ensure variables for Supabase (URL and ANON KEY) and Web3 (WalletConnect Project ID) are set correctly.
 
-1. **Hero Introduction**: Enter the universe of Tedong Silaga with an interactive particle sphere.
-2. **The Essence**: Zoom into the particle core to understand the "Predict the Champion" vision.
-3. **Heritage Integration**: Experience how Toraja buffalo culture meets on-chain innovation.
-4. **Active Arena**: View live prediction markets with real-time WLD and USDC prize pools.
+### 3. Start the Development Server
 
----
+Run the development server.
 
-## ⚖️ License
+```bash
+npm run dev
+```
+
+### 4. Visit the Interface
+
+Open your web browser and navigate to the local server.
+
+```text
+http://localhost:3000
+```
+
+## Stage Journey (Home Page)
+
+| Stage | Purpose |
+|---|---|
+| Hero Introduction | Enter the universe of Tedong Silaga with an interactive particle sphere. |
+| The Essence | Zoom into the particle core to understand the predictive mechanics. |
+| Heritage Integration | Experience how Toraja buffalo culture meets on-chain innovation. |
+| Active Arena | View live prediction markets with real-time token prize pools. |
+
+## License
+
 Built for the World Chain community. Preserving culture through innovation.
