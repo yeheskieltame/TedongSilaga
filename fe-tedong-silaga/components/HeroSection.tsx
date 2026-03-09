@@ -120,10 +120,16 @@ export default function HeroSection({ scrollYProgress }: { scrollYProgress: Moti
             {/* Blur Core */}
             <div style={{ position: "absolute", bottom: "-6px", left: "15%", right: "15%", height: "12px", background: "#EAB308", filter: "blur(12px)", zIndex: -1, opacity: 0.5 }} />
             
-            <button className="hero-btn-secondary" style={{ borderRadius: "9999px", position: "relative", zIndex: 10, background: "rgba(15, 23, 42, 0.6)", border: "1px solid rgba(255, 255, 255, 0.15)" }}>
+            <a 
+              href="https://youtu.be/x1nlGXd_0HE?si=S5-Ky1YZyuQVsULH" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="hero-btn-secondary" 
+              style={{ borderRadius: "9999px", position: "relative", zIndex: 10, background: "rgba(15, 23, 42, 0.6)", border: "1px solid rgba(255, 255, 255, 0.15)", display: "flex", alignItems: "center", gap: "0.5rem", textDecoration: "none", color: "inherit" }}
+            >
               <PlayCircle size={18} color="#EAB308" />
               Watch Demo
-            </button>
+            </a>
           </div>
           
         </div>
