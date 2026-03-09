@@ -146,6 +146,20 @@ Expected output in the server console:
 === Resolution Complete ===
 ```
 
+## Chainlink Architecture Integration
+
+The Tedong Silaga protocol heavily relies on Chainlink CRE to bridge off-chain events with on-chain settlement. Here are the core files composing this integration:
+
+| Component Level      | File Name                                                                                                                  | Description                                                                                                                                                       |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Frontend Trigger** | [`../../fe-tedong-silaga/app/api/action/resolve/route.ts`](../../fe-tedong-silaga/app/api/action/resolve/route.ts)         | Triggers the CRE server API to execute this workflow simulation process when the jury clicks "Resolve".                                                           |
+| **CRE API Server**   | [`server.ts`](./server.ts)                                                                                                 | Express-like Bun server acting as the bridge between the frontend and the CRE CLI.                                                                                |
+| **CRE Workflow**     | [`my-workflow/main.ts`](./my-workflow/main.ts)                                                                             | The core CRE typescript logic. Detects events, queries contracts (EVM Read), calls Apify & Gemini, and reports the consensus back to the chain (EVM Write).       |
+| **CRE Scripts**      | [`my-workflow/facebook.ts`](./my-workflow/facebook.ts)                                                                     | Logic inside the workflow to securely fetch data via the Apify external adapter.                                                                                  |
+| **CRE Scripts**      | [`my-workflow/gemini.ts`](./my-workflow/gemini.ts)                                                                         | AI judging logic using Gemini to deterministically process facebook posts into an integer (`1`, `2`, or `3`).                                                     |
+| **Smart Contract**   | [`../../SmartContracts-TedongSilaga/src/ReceiverTemplate.sol`](../../SmartContracts-TedongSilaga/src/ReceiverTemplate.sol) | Abstract ERC-165 contract validating that calls come from the designated Chainlink CRE Forwarder address.                                                         |
+| **Smart Contract**   | [`../../SmartContracts-TedongSilaga/src/TedongMarket.sol`](../../SmartContracts-TedongSilaga/src/TedongMarket.sol)         | Inherits ReceiverTemplate. Implements the hidden `_processReport` logic which ONLY the Chainlink CRE network can trigger via `onReport()` to settle market funds. |
+
 ## External Services
 
 | Service       | Purpose                |
@@ -156,7 +170,8 @@ Expected output in the server console:
 
 ## Related Resources
 
-| Document        | Link                                        |
-| --------------- | ------------------------------------------- |
-| Smart Contracts | ../../SmartContracts-TedongSilaga/README.md |
-| PRD             | ../../PRD.md                                |
+| Document | Link |
+|---|---|
+| Main Documentation | [../../README.md](../../README.md) |
+| Frontend Interface | [../../fe-tedong-silaga/README.md](../../fe-tedong-silaga/README.md) |
+| Smart Contracts | [../../SmartContracts-TedongSilaga/README.md](../../SmartContracts-TedongSilaga/README.md) |

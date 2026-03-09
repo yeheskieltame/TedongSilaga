@@ -61,13 +61,27 @@ By bringing this on-chain, we unlock a **completely new prediction market catego
 
 ## Key Features
 
-| Feature | Description |
-|---|---|
-| Fully On-Chain | All bets, results, and payouts recorded on World Chain |
-| AI Oracle | Gemini AI extracts results from real Facebook posts |
-| Facebook Integration | Apify scrapes community pages for match results |
-| CRE Forwarder | ERC-165 compliant on-chain settlement via onReport |
-| Fair Fees | Only 2% total (1% platform and 1% cultural fund) |
+| Feature              | Description                                            |
+| -------------------- | ------------------------------------------------------ |
+| Fully On-Chain       | All bets, results, and payouts recorded on World Chain |
+| AI Oracle            | Gemini AI extracts results from real Facebook posts    |
+| Facebook Integration | Apify scrapes community pages for match results        |
+| CRE Forwarder        | ERC-165 compliant on-chain settlement via onReport     |
+| Fair Fees            | Only 2% total (1% platform and 1% cultural fund)       |
+
+## Chainlink Architecture Integration
+
+The Tedong Silaga protocol heavily relies on Chainlink CRE to bridge off-chain events with on-chain settlement. Here are the core files composing this integration:
+
+| Component Level      | File Name                                                                                                        | Description                                                                                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Frontend Trigger** | [`fe-tedong-silaga/app/api/action/resolve/route.ts`](./fe-tedong-silaga/app/api/action/resolve/route.ts)         | Triggers the CRE server API to execute the workflow simulation process when the jury clicks "Resolve".                                                            |
+| **CRE API Server**   | [`cre-workflow/tedong-workflow/server.ts`](./cre-workflow/tedong-workflow/server.ts)                             | Express-like Bun server acting as the bridge between the frontend and the CRE CLI.                                                                                |
+| **CRE Workflow**     | [`cre-workflow/tedong-workflow/my-workflow/main.ts`](./cre-workflow/tedong-workflow/my-workflow/main.ts)         | The core CRE typescript logic. Detects events, queries contracts (EVM Read), calls Apify & Gemini, and reports the consensus back to the chain (EVM Write).       |
+| **CRE Scripts**      | [`cre-workflow/tedong-workflow/my-workflow/facebook.ts`](./cre-workflow/tedong-workflow/my-workflow/facebook.ts) | Logic inside the workflow to securely fetch data via the Apify external adapter.                                                                                  |
+| **CRE Scripts**      | [`cre-workflow/tedong-workflow/my-workflow/gemini.ts`](./cre-workflow/tedong-workflow/my-workflow/gemini.ts)     | AI judging logic using Gemini to deterministically process facebook posts into an integer (`1`, `2`, or `3`).                                                     |
+| **Smart Contract**   | [`SmartContracts-TedongSilaga/src/ReceiverTemplate.sol`](./SmartContracts-TedongSilaga/src/ReceiverTemplate.sol) | Abstract ERC-165 contract validating that calls come from the designated Chainlink CRE Forwarder address.                                                         |
+| **Smart Contract**   | [`SmartContracts-TedongSilaga/src/TedongMarket.sol`](./SmartContracts-TedongSilaga/src/TedongMarket.sol)         | Inherits ReceiverTemplate. Implements the hidden `_processReport` logic which ONLY the Chainlink CRE network can trigger via `onReport()` to settle market funds. |
 
 ## System Architecture
 
@@ -125,47 +139,46 @@ stateDiagram-v2
     Resolved --> [*]: claimWinnings
 ```
 
-| Phase | Action | Actor |
-|---|---|---|
-| Open | Users stake tokens on Buffalo A or B | Users |
-| Locked | Market locked when match starts | Admin |
+| Phase    | Action                                                           | Actor         |
+| -------- | ---------------------------------------------------------------- | ------------- |
+| Open     | Users stake tokens on Buffalo A or B                             | Users         |
+| Locked   | Market locked when match starts                                  | Admin         |
 | Resolved | CRE Workflow scrapes Facebook, calls Gemini AI, reports to chain | Chainlink CRE |
-| Claimed | Winners withdraw proportional share | Users |
+| Claimed  | Winners withdraw proportional share                              | Users         |
 
 ## Fee Distribution
 
-| Recipient | Percentage | Purpose |
-|---|---|---|
-| Platform Wallet | 1% | Operational costs, CRE execution fees |
-| Cultural Preservation Fund | 1% | Torajan cultural council for heritage preservation |
-| Winners | 98% | Distributed proportionally based on stake |
+| Recipient                  | Percentage | Purpose                                            |
+| -------------------------- | ---------- | -------------------------------------------------- |
+| Platform Wallet            | 1%         | Operational costs, CRE execution fees              |
+| Cultural Preservation Fund | 1%         | Torajan cultural council for heritage preservation |
+| Winners                    | 98%        | Distributed proportionally based on stake          |
 
 ## Project Structure
 
-| File / Folder | Purpose |
-|---|---|
-| SmartContracts-TedongSilaga/src/ | TedongMarket, MarketFactory, ReceiverTemplate |
-| SmartContracts-TedongSilaga/test/ | 18 tests across 4 suites |
-| SmartContracts-TedongSilaga/script/ | Deploy and verify scripts |
-| cre-workflow/tedong-workflow/ | Chainlink CRE Workflow for Apify and Gemini to on-chain settlement |
-| fe-tedong-silaga/ | Next.js frontend application |
-| PRD.md | Product Requirements Document |
+| File / Folder                       | Purpose                                                            |
+| ----------------------------------- | ------------------------------------------------------------------ |
+| SmartContracts-TedongSilaga/src/    | TedongMarket, MarketFactory, ReceiverTemplate                      |
+| SmartContracts-TedongSilaga/test/   | 18 tests across 4 suites                                           |
+| SmartContracts-TedongSilaga/script/ | Deploy and verify scripts                                          |
+| cre-workflow/tedong-workflow/       | Chainlink CRE Workflow for Apify and Gemini to on-chain settlement |
+| fe-tedong-silaga/                   | Next.js frontend application                                       |
+| PRD.md                              | Product Requirements Document                                      |
 
 ## Documentation
 
-| Document | Description |
-|---|---|
+| Document                                                          | Description                                            |
+| ----------------------------------------------------------------- | ------------------------------------------------------ |
 | [Smart Contracts README](./SmartContracts-TedongSilaga/README.md) | Contract functions, errors, events, deployed addresses |
-| [CRE Workflow README](./cre-workflow/tedong-workflow/README.md) | Workflow flow, Apify/Gemini config, simulation guide |
-| [Frontend README](./fe-tedong-silaga/README.md) | Frontend architecture, routes, and features |
-| [PRD](./PRD.md) | Product Requirements Document |
+| [CRE Workflow README](./cre-workflow/tedong-workflow/README.md)   | Workflow flow, Apify/Gemini config, simulation guide   |
+| [Frontend README](./fe-tedong-silaga/README.md)                   | Frontend architecture, routes, and features            |
 
 ## Deployed Contracts (World Chain Sepolia)
 
-| Contract | Address | Verified |
-|---|---|---|
-| MockUSDC | [0x6c4A665934214351e2886540a273Dc1A1dfAf775](https://sepolia.worldscan.org/address/0x6c4A665934214351e2886540a273Dc1A1dfAf775) | Yes |
-| MarketFactory | [0x49b4eec85810d31044dc7F06d1714Dcb93Cb96aA](https://sepolia.worldscan.org/address/0x49b4eec85810d31044dc7F06d1714Dcb93Cb96aA) | Yes |
+| Contract      | Address                                                                                                                        | Verified |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| MockUSDC      | [0x6c4A665934214351e2886540a273Dc1A1dfAf775](https://sepolia.worldscan.org/address/0x6c4A665934214351e2886540a273Dc1A1dfAf775) | Yes      |
+| MarketFactory | [0x49b4eec85810d31044dc7F06d1714Dcb93Cb96aA](https://sepolia.worldscan.org/address/0x49b4eec85810d31044dc7F06d1714Dcb93Cb96aA) | Yes      |
 
 ## Tech Stack
 
